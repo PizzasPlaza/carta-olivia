@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#12150e">
+<title>Carta · Olivia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Italiana&family=Jost:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* ============================================================
+   CONFIGURACIÓN
+   Enlace de tu Google Sheet (Archivo → Compartir → Publicar en la web
+   → Documento completo → Microsoft Excel .xlsx). Si lo dejas vacío,
+   la carta lo pide la primera vez.
+   ============================================================ */
+const SHEET_URL = "";
+const IDLE_MS = 120000;          // 2 min sin tocar = nuevo cliente
+const REFRESH_MS = 5 * 60000;    // recarga de la hoja
+</script>
+<style>
+:root{
+  --ground:#12150e; --surface:#1b1f16; --raise:#252a1e; --line:#343a2b;
+  --text:#ece5d3; --muted:#a39d88; --accent:#c2ad55; --accent-ink:#1a1a0c; --bad:#d0694f;
+  --tinto:#8a2433; --blanco:#e4d59a; --rosado:#e39b8b; --espumoso:#d9c26a;
+  --display:"Italiana","Didot","Bodoni 72",Georgia,serif;
+  --body:"Jost","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--ground);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent;user-select:none;padding-top:env(safe-area-inset-top,0px)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+.app{display:grid;grid-template-rows:auto 1fr;height:100%;padding-inline:20px}
+header.top{display:flex;align-items:center;gap:14px 18px;padding-block:16px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;line-height:1;background:none;border:0;padding:0;text-align:left}
+.brand b{font-family:var(--display);font-weight:400;font-size:40px;letter-spacing:.06em}
+.brand span{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px;margin-right:auto}
+.tab{height:44px;padding:0 22px;border-radius:999px;border:0;background:none;font-size:16px;letter-spacing:.04em;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--text);color:var(--ground);font-weight:500}
+.status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--bad)}
+.search{flex:1 1 200px;max-width:320px;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:0 16px;height:48px}
+.search input{background:none;border:0;outline:0;width:100%;user-select:text}
+.btn{height:48px;padding:0 20px;border-radius:999px;border:1px solid var(--line);background:var(--surface);display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:500;white-space:nowrap}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.promo{border-color:var(--accent);color:var(--accent);background:none}
+.btn.icon{width:48px;padding:0;background:none}
+.body{display:grid;grid-template-columns:250px 1fr;gap:24px;min-height:0}
+aside.filters{overflow:auto;padding-block:20px 40px;display:flex;flex-direction:column;gap:22px}
+.fgroup h3{margin:0 0 10px;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:none;display:inline-flex;align-items:center;gap:8px;font-size:15px}
+.chip[aria-pressed="true"]{background:var(--text);color:var(--ground);border-color:var(--text)}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+select.sel{width:100%;height:44px;border-radius:12px;background:var(--surface);border:1px solid var(--line);padding:0 12px}
+.range{display:flex;flex-direction:column;gap:6px}
+.range input{width:100%;accent-color:var(--accent)}
+.range output{font-family:var(--mono);font-size:14px;color:var(--muted)}
+.linkbtn{background:none;border:0;color:var(--accent);padding:0;text-align:left;font-size:15px}
+main.list{overflow:auto;padding-block:20px 60px;padding-bottom:calc(60px + env(safe-area-inset-bottom,0px));min-width:0}
+.summary{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.summary h2{font-family:var(--display);font-weight:400;font-size:30px;margin:0}
+.summary span{color:var(--muted);font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.card{display:grid;grid-template-columns:64px 1fr;gap:14px;text-align:left;background:var(--surface);border:1px solid transparent;border-radius:18px;padding:16px 16px 14px;position:relative;transition:transform .15s}
+.card:active{transform:scale(.985)}
+.bottle,.glass{width:64px;height:130px}
+.card .meta{display:flex;flex-direction:column;min-width:0}
+.eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.card h4{font-family:var(--display);font-weight:400;font-size:24px;line-height:1.1;margin:4px 0 2px;text-wrap:balance;padding-right:8px}
+.card .sub{font-size:14px;color:var(--muted)}
+.card .origen{font-size:14px;margin-top:6px}
+.prices{display:flex;gap:14px;margin-top:auto;padding-top:12px;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.prices div{display:flex;flex-direction:column;font-size:17px}
+.prices small{font-family:var(--body);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.badge{position:absolute;bottom:16px;right:14px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;padding:4px 8px;border-radius:999px;border:1px solid var(--accent);color:var(--accent);background:var(--surface)}
+.notice{margin:60px auto;max-width:50ch;text-align:center;color:var(--muted)}
+.scrim{position:fixed;inset:0;background:rgba(6,8,4,.72);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:24px;width:min(860px,100%);max-height:calc(100% - 24px);overflow:auto;padding:28px;position:relative}
+.close{position:absolute;top:14px;right:14px}
+.detail{display:grid;grid-template-columns:150px 1fr;gap:28px}
+.detail .bottle,.detail .glass{width:150px;height:300px}
+.detail h2{font-family:var(--display);font-weight:400;font-size:44px;line-height:1.05;margin:4px 0;text-wrap:balance;padding-right:40px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;margin:18px 0;font-size:15px}
+.kv dt{color:var(--muted);font-size:11px;letter-spacing:.2em;text-transform:uppercase;align-self:center}
+.kv dd{margin:0}
+.body-scale{display:flex;gap:4px}
+.body-scale i{width:22px;height:6px;border-radius:3px;background:var(--line)}
+.body-scale i.on{background:var(--accent)}
+.detail h5{margin:18px 0 6px;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.detail p{margin:0;max-width:60ch;font-size:17px;font-weight:300}
+.detail .prices div{font-size:26px}
+.detail .prices{gap:28px;margin-top:22px}
+/* promo */
+.promo-sheet{width:min(560px,100%);text-align:center;padding:40px 32px 28px;background:
+  radial-gradient(120% 80% at 50% 0%, color-mix(in srgb,var(--accent) 18%,transparent), transparent 70%), var(--surface);border-color:color-mix(in srgb,var(--accent) 45%,var(--line))}
+.promo-sheet .eyebrow{color:var(--accent)}
+.promo-sheet h2{font-family:var(--display);font-weight:400;font-size:46px;line-height:1.05;margin:10px 0 10px;text-wrap:balance}
+.promo-sheet p{font-size:18px;font-weight:300;margin:0 auto;max-width:40ch}
+.promo-sheet .price{font-family:var(--mono);font-size:34px;margin-top:16px}
+.promo-sheet .when{color:var(--muted);font-size:14px;margin-top:10px}
+.pdots{display:flex;justify-content:center;gap:8px;margin-top:22px}
+.pdots button{width:10px;height:10px;border-radius:50%;border:0;background:var(--line);padding:0}
+.pdots button[aria-current="true"]{background:var(--accent)}
+.promo-sheet .actions{justify-content:center;margin-top:22px}
+.setup{width:min(560px,100%)}
+.setup h2{font-family:var(--display);font-weight:400;font-size:34px;margin:0 0 8px}
+.setup ol{color:var(--muted);padding-left:20px;margin:0 0 16px}
+.setup input{width:100%;height:48px;border-radius:12px;background:var(--ground);border:1px solid var(--line);padding:0 12px;user-select:text}
+.setup .err{color:var(--bad);min-height:22px;font-size:14px;margin-top:8px}
+.actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+@media (max-width:820px){
+  .body{grid-template-columns:1fr}
+  aside.filters{padding-block:14px 0;flex-direction:row;overflow-x:auto;gap:18px}
+  .fgroup{flex:none}
+  .hide-sm{display:none}
+  .detail{grid-template-columns:1fr}
+  .detail .bottle,.detail .glass{width:90px;height:180px}
+  .brand b{font-size:32px}
+  .tabs{margin-right:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <button class="brand" id="brand" aria-label="Olivia"><b>OLIVIA</b><span>Vinos y coctelería</span></button>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="vinos" aria-selected="true">Vinos</button>
+      <button class="tab" role="tab" data-tab="cocteles" aria-selected="false">Cócteles</button>
+    </div>
+    <span class="status" id="offline" hidden><i></i>Sin conexión</span>
+    <button class="btn promo" id="promoBtn" hidden>★ Promociones</button>
+    <label class="search" for="q">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input id="q" type="search" placeholder="Buscar…" autocomplete="off">
+    </label>
+  </header>
+  <div class="body">
+    <aside class="filters" id="filters"></aside>
+    <main class="list" id="main"><p class="notice">Cargando la carta…</p></main>
+  </div>
+</div>
+<div id="overlay"></div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money=n=>(n==null)?"—":"$"+Number(n).toLocaleString("es-MX");
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const norm=s=>String(s??"").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s+/g,"_");
+const yes=v=>["si","s","x","1","true","verdadero","yes"].includes(norm(v));
+const num=v=>{if(typeof v==="number")return v;const s=String(v??"").replace(/[^0-9.]/g,"");return s===""?null:Number(s);};
+const txt=v=>String(v??"").trim();
+
+const TIPOS=[
+  {k:"tinto",label:"Tinto",plural:"Tintos",color:"var(--tinto)",fill:"#6e1a27"},
+  {k:"blanco",label:"Blanco",plural:"Blancos",color:"var(--blanco)",fill:"#d6c47e"},
+  {k:"rosado",label:"Rosado",plural:"Rosados",color:"var(--rosado)",fill:"#d98a7a"},
+  {k:"espumoso",label:"Espumoso",plural:"Espumosos",color:"var(--espumoso)",fill:"#cdb257"}
+];
+const tipoOf=k=>TIPOS.find(t=>t.k===k)||TIPOS[0];
+const SABOR_COLOR={citrico:"#e6d36a",frutal:"#d65a72",tropical:"#eea43c",cremoso:"#ece0c4",cafe:"#7a5334",amargo:"#e0662f",seco:"#cfd8c2"};
+const ESTILO_ORDEN=["spritz","de_la_casa","clasico","frozen","cafe","sin_alcohol"];
+
+let data={vinos:[],cocteles:[],promos:[]};
+let tab="vinos";
+const fv={tipos:new Set(),pais:"",uva:"",max:null,copa:false};
+const fc={estilos:new Set(),base:"",sabores:new Set(),max:null};
+let q="";
+
+/* ---------- Carga de la hoja ---------- */
+const sheetUrl=()=>(store.get("olivia_sheet_url")||SHEET_URL||"").trim();
+function xlsxUrl(u){
+  if(/\/spreadsheets\/d\/e\//.test(u)) return u.replace(/\/pub(html)?(\?.*)?$/,"")+"/pub?output=xlsx";
+  const m=u.match(/\/spreadsheets\/d\/([^/?#]+)/);
+  return m?`https://docs.google.com/spreadsheets/d/${m[1]}/export?format=xlsx`:u;
+}
+function rows(wb,name){
+  const sn=wb.SheetNames.find(n=>norm(n)===name); if(!sn) return [];
+  return XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:"",raw:true}).map(r=>{const o={};for(const k in r)o[norm(k)]=r[k];return o;});
+}
+function parseWorkbook(buf){
+  const wb=XLSX.read(buf,{type:"array"});
+  const vinos=rows(wb,"vinos").map((r,i)=>({id:"v"+i,nombre:txt(r.nombre),bodega:txt(r.bodega),tipo:TIPOS.some(t=>t.k===norm(r.tipo))?norm(r.tipo):"tinto",
+    anada:txt(r.anada),uva:txt(r.uva),cuerpo:num(r.cuerpo),pais:txt(r.pais),region:txt(r.region),precioCopa:num(r.precio_copa),precioBotella:num(r.precio_botella),
+    notas:txt(r.notas),maridaje:txt(r.maridaje),disponible:txt(r.disponible)===""?true:yes(r.disponible),destacado:yes(r.destacado)}))
+    .filter(w=>w.nombre&&w.disponible&&w.precioBotella!=null);
+  const cocteles=rows(wb,"cocteles").map((r,i)=>({id:"c"+i,nombre:txt(r.nombre),estilo:txt(r.estilo),base:txt(r.base),sabor:txt(r.sabor),
+    ingredientes:txt(r.ingredientes),descripcion:txt(r.descripcion),precio:num(r.precio),disponible:txt(r.disponible)===""?true:yes(r.disponible),destacado:yes(r.destacado)}))
+    .filter(c=>c.nombre&&c.disponible);
+  const promos=rows(wb,"promociones").map(r=>({titulo:txt(r.titulo),descripcion:txt(r.descripcion),precio:txt(r.precio),
+    ini:toDate(r.fecha_inicio),fin:toDate(r.fecha_fin),dias:txt(r.dias),hIni:toMin(r.hora_inicio),hFin:toMin(r.hora_fin),activa:yes(r.activa)}))
+    .filter(p=>p.titulo&&p.activa);
+  return {vinos,cocteles,promos};
+}
+function toDate(v){ // -> "YYYY-MM-DD" o ""
+  if(v===""||v==null) return "";
+  if(typeof v==="number"){const d=new Date(Math.round((v-25569)*864e5));return d.toISOString().slice(0,10);}
+  const s=txt(v); let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+  m=s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/); if(m){const y=m[3].length===2?"20"+m[3]:m[3];return `${y}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;}
+  return "";
+}
+function toMin(v){
+  if(v===""||v==null) return null;
+  if(typeof v==="number"){const f=v%1;return Math.round(f*1440);}
+  const m=txt(v).match(/^(\d{1,2})(?::(\d{2}))?/); return m?Number(m[1])*60+Number(m[2]||0):null;
+}
+async function load(){
+  const url=sheetUrl();
+  if(!url){ render(); openSetup(); return; }
+  try{
+    if(!window.XLSX) throw new Error("sin librería");
+    const res=await fetch(xlsxUrl(url),{cache:"no-store"});
+    if(!res.ok) throw new Error("http "+res.status);
+    data=parseWorkbook(await res.arrayBuffer());
+    store.set("olivia_cache",JSON.stringify(data));
+    $("#offline").hidden=true;
+  }catch(e){
+    const c=store.get("olivia_cache");
+    if(c){ try{data=JSON.parse(c);}catch(_){} $("#offline").hidden=false; }
+    else { $("#main").innerHTML=`<p class="notice">No se pudo leer la carta.<br>Revisa la conexión a internet o que la hoja esté publicada en la web.<br><br><button class="btn" id="retry">Reintentar</button></p>`; $("#retry").onclick=load; return; }
+  }
+  render(); updatePromoBtn();
+  if(!promoShownThisGuest && !$("#overlay").innerHTML && activePromos().length){ promoShownThisGuest=true; waitingGuest=false; openPromos(); }
+}
+
+/* ---------- Dibujos ---------- */
+function bottle(tipo,label){
+  const t=tipoOf(tipo), sp=tipo==="espumoso";
+  return `<svg class="bottle" viewBox="0 0 60 130" aria-hidden="true">
+    <path d="M24 2h12v26c0 6 12 12 12 26v68a6 6 0 0 1-6 6H18a6 6 0 0 1-6-6V54c0-14 12-20 12-26z" fill="#0b0d08" stroke="#3a4030"/>
+    <path d="M14 70h32v44H14z" fill="${t.fill}"/>
+    <path d="M24 2h12v${sp?14:8}H24z" fill="${sp?"#cdb257":"#3a4030"}"/>
+    <text x="30" y="96" text-anchor="middle" font-family="Italiana, Georgia, serif" font-size="15" fill="#12150e">${esc((label||"").slice(0,2).toUpperCase())}</text>
+    <path d="M17 60c0-8 6-12 8-16" stroke="#fff" stroke-opacity=".12" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </svg>`;
+}
+function glass(c){
+  const col=SABOR_COLOR[norm(c.sabor)]||"#c2ad55", e=norm(c.estilo);
+  const stroke=`stroke="#5a6248" stroke-width="1.5" fill="none"`;
+  let g;
+  if(e==="spritz"||e==="frozen"){ // copa balón
+    g=`<path d="M12 22h36c0 30-6 44-18 44S12 52 12 22z" ${stroke}/><path d="M14.5 38h31c-1.5 16-7 24-15.5 24S16 54 14.5 38z" fill="${col}" opacity=".9"/><path d="M30 66v38M18 106h24" ${stroke}/>${e==="spritz"?'<circle cx="24" cy="48" r="1.6" fill="#fff" opacity=".5"/><circle cx="33" cy="42" r="1.2" fill="#fff" opacity=".5"/><circle cx="29" cy="54" r="1.4" fill="#fff" opacity=".5"/>':""}`;
+  } else if(e==="clasico"){ // copa martini
+    g=`<path d="M6 30h48L30 62z" ${stroke}/><path d="M13 36h34L30 58z" fill="${col}" opacity=".9"/><path d="M30 62v42M18 106h24" ${stroke}/><circle cx="38" cy="40" r="3.5" fill="#6d7a3a"/>`;
+  } else if(e==="cafe"){ // vaso bajo
+    g=`<path d="M12 58h36l-3 48H15z" ${stroke}/><path d="M13.2 70h33.6l-2.3 34H15.5z" fill="${col}"/><path d="M13.5 70h33v6h-33z" fill="#e9dcc0" opacity=".85"/>`;
+  } else { // highball
+    g=`<path d="M16 24h28l-2 82H18z" ${stroke}/><path d="M17.2 44h25.6l-1.8 60H19z" fill="${col}" opacity=".9"/><rect x="22" y="54" width="9" height="9" rx="2" fill="#fff" opacity=".18"/><rect x="29" y="70" width="9" height="9" rx="2" fill="#fff" opacity=".14"/><path d="M36 14l-6 40" stroke="#c2ad55" stroke-width="2"/>`;
+  }
+  return `<svg class="glass" viewBox="0 0 60 130" aria-hidden="true">${g}</svg>`;
+}
+
+/* ---------- Render general ---------- */
+function render(){
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.tab===tab));
+  $("#q").placeholder= tab==="vinos"?"Buscar vino, uva, platillo…":"Buscar cóctel, ingrediente…";
+  tab==="vinos"?(renderWineFilters(),renderWines()):(renderCocktailFilters(),renderCocktails());
+}
+function rangeHtml(id,label,maxP,cur){
+  return `<div class="fgroup hide-sm range"><h3>${label}</h3><input type="range" id="${id}" min="0" max="${maxP}" step="${maxP>600?50:10}" value="${cur}"><output id="${id}Out">${money(cur)}</output></div>`;
+}
+function chipsBind(sel,set,after){
+  document.querySelectorAll(sel).forEach(b=>b.onclick=()=>{const k=b.dataset.k;set.has(k)?set.delete(k):set.add(k);b.setAttribute("aria-pressed",set.has(k));after();});
+}
+function resetAll(){fv.tipos.clear();fv.pais="";fv.uva="";fv.max=null;fv.copa=false;fc.estilos.clear();fc.base="";fc.sabores.clear();fc.max=null;q="";$("#q").value="";render();}
+function empty(){ return `<p class="notice">Nada coincide con esos filtros.<br><button class="linkbtn" id="emptyReset">Limpiar filtros</button></p>`; }
+function bindList(){ $("#main").querySelectorAll(".card").forEach(c=>c.onclick=()=>c.dataset.id[0]==="v"?openWine(c.dataset.id):openCocktail(c.dataset.id)); const er=$("#emptyReset"); if(er) er.onclick=resetAll; }
+const hasQ=(arr)=>{const s=q.trim().toLowerCase();return !s||arr.join(" ").toLowerCase().includes(s);};
+
+/* ---------- Vinos ---------- */
+function renderWineFilters(){
+  const W=data.vinos;
+  const paises=[...new Set(W.map(w=>w.pais).filter(Boolean))].sort();
+  const uvas=[...new Set(W.flatMap(w=>w.uva.split(/,\s*/).map(u=>u.replace(/\s*\d+%/,"").trim())).filter(Boolean))].sort();
+  const maxP=Math.ceil(Math.max(500,...W.map(w=>w.precioBotella||0))/50)*50;
+  if(fv.max!=null&&fv.max>maxP) fv.max=null;
+  $("#filters").innerHTML=`
+    <div class="fgroup"><h3>Tipo</h3><div class="chips">${TIPOS.filter(t=>W.some(w=>w.tipo===t.k)).map(t=>`<button class="chip" data-k="${t.k}" data-g="tipo" aria-pressed="${fv.tipos.has(t.k)}"><span class="dot" style="background:${t.color}"></span>${t.label}</button>`).join("")}</div></div>
+    <div class="fgroup"><h3>Servicio</h3><div class="chips"><button class="chip" id="fCopa" aria-pressed="${fv.copa}">Por copa</button></div></div>
+    <div class="fgroup"><h3>País</h3><select class="sel" id="fPais"><option value="">Todos</option>${paises.map(p=>`<option ${p===fv.pais?"selected":""}>${esc(p)}</option>`).join("")}</select></div>
+    <div class="fgroup hide-sm"><h3>Uva</h3><select class="sel" id="fUva"><option value="">Todas</option>${uvas.map(p=>`<option ${p===fv.uva?"selected":""}>${esc(p)}</option>`).join("")}</select></div>
+    ${rangeHtml("fMax","Botella hasta",maxP,fv.max??maxP)}
+    <div class="fgroup"><button class="linkbtn" id="fReset">Limpiar filtros</button></div>`;
+  chipsBind('[data-g="tipo"]',fv.tipos,renderWines);
+  $("#fCopa").onclick=e=>{fv.copa=!fv.copa;e.currentTarget.setAttribute("aria-pressed",fv.copa);renderWines();};
+  $("#fPais").onchange=e=>{fv.pais=e.target.value;renderWines();};
+  $("#fUva").onchange=e=>{fv.uva=e.target.value;renderWines();};
+  $("#fMax").oninput=e=>{fv.max=Number(e.target.value);$("#fMaxOut").textContent=money(fv.max);renderWines();};
+  $("#fReset").onclick=resetAll;
+}
+function renderWines(){
+  if(tab!=="vinos") return;
+  const list=data.vinos.filter(w=>(!fv.tipos.size||fv.tipos.has(w.tipo))&&(!fv.pais||w.pais===fv.pais)
+    &&(!fv.uva||w.uva.toLowerCase().includes(fv.uva.toLowerCase()))&&(!fv.copa||w.precioCopa)&&(fv.max==null||(w.precioBotella||0)<=fv.max)
+    &&hasQ([w.nombre,w.bodega,w.uva,w.pais,w.region,w.notas,w.maridaje]))
+    .sort((a,b)=>(b.destacado-a.destacado)||TIPOS.findIndex(t=>t.k===a.tipo)-TIPOS.findIndex(t=>t.k===b.tipo)||(a.precioBotella||0)-(b.precioBotella||0));
+  if(!data.vinos.length){ $("#main").innerHTML=`<p class="notice">No hay vinos disponibles en la hoja.</p>`; return; }
+  $("#main").innerHTML=`<div class="summary"><h2>${fv.tipos.size===1?tipoOf([...fv.tipos][0]).plural:"Nuestros vinos"}</h2><span>${list.length} ${list.length===1?"etiqueta":"etiquetas"}</span></div>
+    ${list.length?`<div class="grid">${list.map(w=>`<button class="card" data-id="${w.id}">
+      ${w.destacado?'<span class="badge">De la casa</span>':""}
+      ${bottle(w.tipo,w.nombre)}
+      <div class="meta">
+        <span class="eyebrow">${tipoOf(w.tipo).label}${w.anada?" · "+esc(w.anada):""}</span>
+        <h4>${esc(w.nombre)}</h4><span class="sub">${esc(w.bodega)}</span>
+        <span class="origen">${esc(w.uva)}<br><span style="color:var(--muted)">${esc([w.region,w.pais].filter(Boolean).join(", "))}</span></span>
+        <div class="prices">${w.precioCopa?`<div><small>Copa</small>${money(w.precioCopa)}</div>`:""}<div><small>Botella</small>${money(w.precioBotella)}</div></div>
+      </div></button>`).join("")}</div>`:empty()}`;
+  bindList();
+}
+function openWine(id){
+  const w=data.vinos.find(x=>x.id===id); if(!w) return;
+  const t=tipoOf(w.tipo), cu=w.cuerpo||0;
+  openOverlay(`${closeBtn}<div class="detail">${bottle(w.tipo,w.nombre)}<div>
+    <span class="eyebrow" style="font-size:12px;color:${t.color}">${t.label}${w.anada?" · "+esc(w.anada):""}</span>
+    <h2>${esc(w.nombre)}</h2><div style="color:var(--muted);font-size:17px">${esc(w.bodega)}</div>
+    <dl class="kv">
+      ${w.uva?`<dt>Uva</dt><dd>${esc(w.uva)}</dd>`:""}
+      <dt>Origen</dt><dd>${esc([w.region,w.pais].filter(Boolean).join(", "))}</dd>
+      ${cu?`<dt>Cuerpo</dt><dd><span class="body-scale" aria-label="Cuerpo ${cu} de 5">${[1,2,3,4,5].map(i=>`<i class="${i<=cu?"on":""}"></i>`).join("")}</span></dd>`:""}
+    </dl>
+    ${w.notas?`<h5>Notas de cata</h5><p>${esc(w.notas)}</p>`:""}
+    ${w.maridaje?`<h5>Marida con</h5><p>${esc(w.maridaje)}</p>`:""}
+    <div class="prices">${w.precioCopa?`<div><small>Copa 4 oz</small>${money(w.precioCopa)}</div>`:""}<div><small>Botella 750 ml</small>${money(w.precioBotella)}</div></div>
+  </div></div>`);
+}
+
+/* ---------- Cócteles ---------- */
+function renderCocktailFilters(){
+  const C=data.cocteles;
+  const estilos=[...new Set(C.map(c=>c.estilo).filter(Boolean))].sort((a,b)=>{const ia=ESTILO_ORDEN.indexOf(norm(a)),ib=ESTILO_ORDEN.indexOf(norm(b));return (ia<0?99:ia)-(ib<0?99:ib);});
+  const bases=[...new Set(C.map(c=>c.base).filter(Boolean))].sort();
+  const sabores=[...new Set(C.map(c=>c.sabor).filter(Boolean))].sort();
+  const maxP=Math.ceil(Math.max(100,...C.map(c=>c.precio||0))/10)*10;
+  if(fc.max!=null&&fc.max>maxP) fc.max=null;
+  $("#filters").innerHTML=`
+    <div class="fgroup"><h3>Estilo</h3><div class="chips">${estilos.map(e=>`<button class="chip" data-k="${esc(e)}" data-g="estilo" aria-pressed="${fc.estilos.has(e)}">${esc(e)}</button>`).join("")}</div></div>
+    <div class="fgroup"><h3>Base</h3><select class="sel" id="fBase"><option value="">Todas</option>${bases.map(b=>`<option ${b===fc.base?"selected":""}>${esc(b)}</option>`).join("")}</select></div>
+    <div class="fgroup hide-sm"><h3>Sabor</h3><div class="chips">${sabores.map(s=>`<button class="chip" data-k="${esc(s)}" data-g="sabor" aria-pressed="${fc.sabores.has(s)}"><span class="dot" style="background:${SABOR_COLOR[norm(s)]||"var(--accent)"}"></span>${esc(s)}</button>`).join("")}</div></div>
+    ${rangeHtml("cMax","Precio hasta",maxP,fc.max??maxP)}
+    <div class="fgroup"><button class="linkbtn" id="fReset">Limpiar filtros</button></div>`;
+  chipsBind('[data-g="estilo"]',fc.estilos,renderCocktails);
+  chipsBind('[data-g="sabor"]',fc.sabores,renderCocktails);
+  $("#fBase").onchange=e=>{fc.base=e.target.value;renderCocktails();};
+  $("#cMax").oninput=e=>{fc.max=Number(e.target.value);$("#cMaxOut").textContent=money(fc.max);renderCocktails();};
+  $("#fReset").onclick=resetAll;
+}
+function renderCocktails(){
+  if(tab!=="cocteles") return;
+  const list=data.cocteles.filter(c=>(!fc.estilos.size||fc.estilos.has(c.estilo))&&(!fc.base||c.base===fc.base)&&(!fc.sabores.size||fc.sabores.has(c.sabor))
+    &&(fc.max==null||(c.precio||0)<=fc.max)&&hasQ([c.nombre,c.estilo,c.base,c.sabor,c.ingredientes,c.descripcion]))
+    .sort((a,b)=>(b.destacado-a.destacado)||ESTILO_ORDEN.indexOf(norm(a.estilo))-ESTILO_ORDEN.indexOf(norm(b.estilo))||(a.precio||0)-(b.precio||0));
+  if(!data.cocteles.length){ $("#main").innerHTML=`<p class="notice">No hay cócteles en la hoja.</p>`; return; }
+  $("#main").innerHTML=`<div class="summary"><h2>${fc.estilos.size===1?esc([...fc.estilos][0]):"Coctelería"}</h2><span>${list.length} ${list.length===1?"cóctel":"cócteles"}</span></div>
+    ${list.length?`<div class="grid">${list.map(c=>`<button class="card" data-id="${c.id}">
+      ${c.destacado?'<span class="badge">Favorito</span>':""}
+      ${glass(c)}
+      <div class="meta">
+        <span class="eyebrow">${esc([c.estilo,c.base!==c.estilo?c.base:""].filter(Boolean).join(" · "))}</span>
+        <h4>${esc(c.nombre)}</h4>
+        <span class="origen" style="color:var(--muted)">${esc(c.ingredientes)}</span>
+        <div class="prices"><div><small>Precio</small>${money(c.precio)}</div></div>
+      </div></button>`).join("")}</div>`:empty()}`;
+  bindList();
+}
+function openCocktail(id){
+  const c=data.cocteles.find(x=>x.id===id); if(!c) return;
+  openOverlay(`${closeBtn}<div class="detail">${glass(c)}<div>
+    <span class="eyebrow" style="font-size:12px;color:var(--accent)">${esc(c.estilo)}</span>
+    <h2>${esc(c.nombre)}</h2>
+    ${c.descripcion?`<p style="color:var(--muted)">${esc(c.descripcion)}</p>`:""}
+    <dl class="kv">${c.base?`<dt>Base</dt><dd>${esc(c.base)}</dd>`:""}${c.sabor?`<dt>Sabor</dt><dd>${esc(c.sabor)}</dd>`:""}</dl>
+    ${c.ingredientes?`<h5>Ingredientes</h5><p>${esc(c.ingredientes)}</p>`:""}
+    <div class="prices"><div><small>Precio</small>${money(c.precio)}</div></div>
+  </div></div>`);
+}
+
+/* ---------- Promociones ---------- */
+const DIAS=["dom","lun","mar","mie","jue","vie","sab"];
+function activePromos(){
+  const now=new Date(), today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+  const mins=now.getHours()*60+now.getMinutes(), dia=DIAS[now.getDay()];
+  return (data.promos||[]).filter(p=>{
+    if(p.ini&&today<p.ini) return false;
+    if(p.fin&&today>p.fin) return false;
+    if(p.dias&&!/todos/i.test(p.dias)){ const ds=p.dias.split(/[,\s]+/).map(d=>norm(d).slice(0,3)); if(!ds.includes(dia)) return false; }
+    if(p.hIni!=null&&p.hFin!=null){ const inRange=p.hIni<=p.hFin?(mins>=p.hIni&&mins<p.hFin):(mins>=p.hIni||mins<p.hFin); if(!inRange) return false; }
+    return true;
+  });
+}
+function whenText(p){
+  const parts=[];
+  if(p.dias&&!/todos/i.test(p.dias)) parts.push(p.dias.replace(/,\s*/g,", "));
+  const hm=m=>`${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
+  if(p.hIni!=null&&p.hFin!=null) parts.push(`${hm(p.hIni)}–${hm(p.hFin)} h`);
+  if(p.fin){const [y,m,d]=p.fin.split("-");parts.push(`hasta el ${Number(d)}/${Number(m)}`);}
+  return parts.join(" · ");
+}
+function updatePromoBtn(){ const n=activePromos().length; $("#promoBtn").hidden=!n; }
+let promoShownThisGuest=false, promoTimer=null;
+function openPromos(){
+  const P=activePromos(); if(!P.length) return;
+  let i=0;
+  const paint=()=>{
+    const p=P[i];
+    openOverlay(`${closeBtn}<span class="eyebrow">Promoción</span>
+      <h2>${esc(p.titulo)}</h2>${p.descripcion?`<p>${esc(p.descripcion)}</p>`:""}
+      ${p.precio?`<div class="price">${esc(p.precio)}</div>`:""}
+      ${whenText(p)?`<div class="when">${esc(whenText(p))}</div>`:""}
+      ${P.length>1?`<div class="pdots">${P.map((_,k)=>`<button data-p="${k}" aria-label="Promoción ${k+1}" aria-current="${k===i}"></button>`).join("")}</div>`:""}
+      <div class="actions"><button class="btn primary" id="promoOk">Ver la carta</button></div>`,"sheet promo-sheet");
+    $("#promoOk").onclick=closeOverlay;
+    document.querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{i=Number(b.dataset.p);paint();});
+  };
+  paint();
+  clearInterval(promoTimer);
+  if(P.length>1) promoTimer=setInterval(()=>{ if(!$(".promo-sheet")){clearInterval(promoTimer);return;} i=(i+1)%P.length; paint(); },6000);
+}
+
+/* ---------- Overlay ---------- */
+function openOverlay(html,cls="sheet"){
+  $("#overlay").innerHTML=`<div class="scrim" id="scrim"><div class="${cls}" role="dialog" aria-modal="true">${html}</div></div>`;
+  $("#scrim").onclick=e=>{if(e.target.id==="scrim")closeOverlay();};
+  const c=$("#overlay .close"); if(c) c.onclick=closeOverlay;
+}
+function closeOverlay(){ $("#overlay").innerHTML=""; clearInterval(promoTimer); }
+const closeBtn=`<button class="btn icon close" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
+
+/* ---------- Configuración (mantener presionado el logo 3 s) ---------- */
+function openSetup(){
+  openOverlay(`<h2>Conectar la carta</h2>
+    <ol><li>En Google Sheets: Archivo → Compartir → Publicar en la web.</li><li>Elige "Documento completo" y "Microsoft Excel (.xlsx)". Publica.</li><li>Copia el enlace y pégalo aquí.</li></ol>
+    <label for="sheetUrl" style="font-size:12px;color:var(--muted)">Enlace de la hoja</label>
+    <input id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/e/…/pub?output=xlsx" value="${esc(sheetUrl())}">
+    <div class="err" id="setupErr"></div>
+    <div class="actions">${sheetUrl()?'<button class="btn" id="setupCancel">Cancelar</button>':""}<button class="btn primary" id="setupSave">Guardar y cargar</button></div>`,"sheet setup");
+  const cancel=$("#setupCancel"); if(cancel) cancel.onclick=closeOverlay;
+  $("#setupSave").onclick=async()=>{
+    const u=$("#sheetUrl").value.trim();
+    if(!/^https:\/\/docs\.google\.com\/spreadsheets\//.test(u)){ $("#setupErr").textContent="Pega un enlace de Google Sheets."; return; }
+    $("#setupSave").disabled=true; $("#setupErr").textContent="Probando…";
+    try{
+      if(!window.XLSX) throw 0;
+      const r=await fetch(xlsxUrl(u),{cache:"no-store"}); if(!r.ok) throw 0;
+      const d=parseWorkbook(await r.arrayBuffer()); if(!d.vinos.length&&!d.cocteles.length) throw 0;
+      store.set("olivia_sheet_url",u); closeOverlay(); promoShownThisGuest=false; load();
+    }catch(e){ $("#setupSave").disabled=false; $("#setupErr").textContent="No se pudo leer. Revisa que la hoja esté publicada en la web como .xlsx y tenga las hojas Vinos y Cocteles."; }
+  };
+}
+let pressT;
+$("#brand").addEventListener("pointerdown",()=>{pressT=setTimeout(openSetup,3000);});
+["pointerup","pointerleave","pointercancel"].forEach(ev=>$("#brand").addEventListener(ev,()=>clearTimeout(pressT)));
+$("#brand").addEventListener("contextmenu",e=>e.preventDefault());
+
+/* ---------- Eventos ---------- */
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{ if(tab===t.dataset.tab) return; tab=t.dataset.tab; q=""; $("#q").value=""; $("#main").scrollTop=0; render(); });
+$("#q").addEventListener("input",e=>{q=e.target.value; tab==="vinos"?renderWines():renderCocktails();});
+$("#promoBtn").onclick=openPromos;
+
+/* Modo kiosco: tras 2 min sin uso vuelve al inicio y muestra la promoción al siguiente cliente */
+let idleT;
+function bump(){ clearTimeout(idleT); idleT=setTimeout(()=>{ if($("#sheetUrl")) return; closeOverlay(); tab="vinos"; resetAll(); $("#main").scrollTop=0; promoShownThisGuest=false; waitingGuest=true; },IDLE_MS); }
+let waitingGuest=false;
+document.addEventListener("pointerdown",()=>{ if(waitingGuest){ waitingGuest=false; if(activePromos().length){ promoShownThisGuest=true; setTimeout(openPromos,50);} } },{capture:true});
+["pointerdown","keydown","scroll"].forEach(ev=>document.addEventListener(ev,bump,{passive:true,capture:true}));
+
+setInterval(()=>{ updatePromoBtn(); },60000);
+setInterval(()=>{ if(!$("#overlay").innerHTML) load(); },REFRESH_MS);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&!$("#overlay").innerHTML) load(); });
+
+load(); bump();
+})();
+</script>
+</body>
+</html>
