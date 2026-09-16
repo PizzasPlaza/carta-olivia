@@ -205,11 +205,11 @@ function rows(wb,name){
 }
 function parseWorkbook(buf){
   const wb=XLSX.read(buf,{type:"array"});
-  const vinos=rows(wb,"vinos").map((r,i)=>({id:"v"+i,nombre:txt(r.nombre),bodega:txt(r.bodega),tipo:TIPOS.some(t=>t.k===norm(r.tipo))?norm(r.tipo):"tinto",
+  const vinos=rows(wb,"vinos").map((r,i)=>({id:"v"+i,foto:imgUrl(txt(r.foto)),nombre:txt(r.nombre),bodega:txt(r.bodega),tipo:TIPOS.some(t=>t.k===norm(r.tipo))?norm(r.tipo):"tinto",
     anada:txt(r.anada),uva:txt(r.uva),cuerpo:num(r.cuerpo),pais:txt(r.pais),region:txt(r.region),precioCopa:num(r.precio_copa),precioBotella:num(r.precio_botella),
     notas:txt(r.notas),maridaje:txt(r.maridaje),disponible:txt(r.disponible)===""?true:yes(r.disponible),destacado:yes(r.destacado)}))
     .filter(w=>w.nombre&&w.disponible&&w.precioBotella!=null);
-  const cocteles=rows(wb,"cocteles").map((r,i)=>({id:"c"+i,nombre:txt(r.nombre),estilo:txt(r.estilo),base:txt(r.base),sabor:txt(r.sabor),
+  const cocteles=rows(wb,"cocteles").map((r,i)=>({id:"c"+i,foto:imgUrl(txt(r.foto)),nombre:txt(r.nombre),estilo:txt(r.estilo),base:txt(r.base),sabor:txt(r.sabor),
     ingredientes:txt(r.ingredientes),descripcion:txt(r.descripcion),precio:num(r.precio),disponible:txt(r.disponible)===""?true:yes(r.disponible),destacado:yes(r.destacado)}))
     .filter(c=>c.nombre&&c.disponible);
   const promos=rows(wb,"promociones").map(r=>({imagen:imgUrl(txt(r.imagen)),titulo:txt(r.titulo),descripcion:txt(r.descripcion),precio:txt(r.precio),
@@ -257,7 +257,8 @@ async function load(){
 }
 
 /* ---------- Dibujos ---------- */
-function bottle(tipo,label){
+function bottle(tipo,label,own){
+  if(own) return `<img class="photo" src="${esc(own)}" alt="">`;
   const f=FOTOS[fotoKey(label)]; if(f) return `<img class="photo" src="${f}" alt="">`;
   const t=tipoOf(tipo), sp=tipo==="espumoso";
   return `<svg class="bottle" viewBox="0 0 60 130" aria-hidden="true">
@@ -270,6 +271,7 @@ function bottle(tipo,label){
 }
 window.__glassSvg=c=>glassSvg(c);
 function glass(c,big){
+  if(c.foto) return `<img class="cphoto" src="${esc(c.foto)}" alt="">`;
   const cf=COCTEL_FOTOS[fotoKey(c.nombre)];
   if(cf) return `<img class="cphoto" src="https://images.unsplash.com/${cf}?w=${big?420:220}&h=${big?860:440}&fit=crop&auto=format&q=70" alt="" loading="lazy" onerror="this.style.opacity=0">`;
   return glassSvg(c);
@@ -338,7 +340,7 @@ function renderWines(){
   $("#main").innerHTML=`<div class="summary"><h2>${fv.tipos.size===1?tipoOf([...fv.tipos][0]).plural:"Nuestros vinos"}</h2><span>${list.length} ${list.length===1?"etiqueta":"etiquetas"}</span></div>
     ${list.length?`<div class="grid">${list.map(w=>`<button class="card" data-id="${w.id}">
       ${w.destacado?'<span class="badge">De la casa</span>':""}
-      ${bottle(w.tipo,w.nombre)}
+      ${bottle(w.tipo,w.nombre,w.foto)}
       <div class="meta">
         <span class="eyebrow">${tipoOf(w.tipo).label}${w.anada?" · "+esc(w.anada):""}</span>
         <h4>${esc(w.nombre)}</h4><span class="sub">${esc(w.bodega)}</span>
@@ -350,7 +352,7 @@ function renderWines(){
 function openWine(id){
   const w=data.vinos.find(x=>x.id===id); if(!w) return;
   const t=tipoOf(w.tipo), cu=w.cuerpo||0;
-  openOverlay(`${closeBtn}<div class="detail">${bottle(w.tipo,w.nombre)}<div>
+  openOverlay(`${closeBtn}<div class="detail">${bottle(w.tipo,w.nombre,w.foto)}<div>
     <span class="eyebrow" style="font-size:12px;color:${t.color}">${t.label}${w.anada?" · "+esc(w.anada):""}</span>
     <h2>${esc(w.nombre)}</h2><div style="color:var(--muted);font-size:17px">${esc(w.bodega)}</div>
     <dl class="kv">
