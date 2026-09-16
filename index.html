@@ -171,6 +171,10 @@ main.list{overflow:auto;padding-block:20px 60px;padding-bottom:calc(60px + env(s
 .mcard .pr{font-family:var(--mono);font-size:17px;color:var(--text);margin-top:6px}
 .leaflet-container{font-family:var(--body)}
 /* ---- platillos ---- */
+.dlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:0 28px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:6px 22px}
+.drow{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:62px;padding:10px 2px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;font-family:var(--cond);font-size:22px;letter-spacing:.02em;text-transform:uppercase;color:var(--text)}
+.drow .go{font-family:var(--body);font-size:15px;letter-spacing:0;text-transform:none;color:var(--accent);white-space:nowrap}
+.drow:active{background:var(--raise)}
 .dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
 .dcard{display:flex;flex-direction:column;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 18px 14px;min-height:210px}
 .dcard h4{font-family:var(--cond);font-weight:500;font-size:25px;text-transform:uppercase;line-height:1.1;margin:4px 0 6px;text-wrap:balance}
@@ -181,7 +185,7 @@ main.list{overflow:auto;padding-block:20px 60px;padding-bottom:calc(60px + env(s
 .pairs img,.pairs svg{height:58px;width:auto;max-width:26px;object-fit:contain}
 .pairs .cph{width:40px;height:40px;border-radius:50%;object-fit:cover;margin-left:6px;border:2px solid var(--surface)}
 .pairs small{font-family:var(--cond);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-right:8px;align-self:center}
-.dish-head{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:end;padding-right:48px}
+.dish-head{padding-right:48px}
 .dish-head h2{font-family:var(--display);font-weight:600;font-size:50px;line-height:1.02;margin:6px 0 8px;text-wrap:balance}
 .dish-head p{margin:0;font-size:19px;font-weight:300;max-width:56ch}
 .dish-head .price{font-family:var(--mono);font-size:30px}
@@ -625,13 +629,9 @@ function renderDishes(){
   const list=P.filter(p=>(!fd.cats.size||fd.cats.has(p.categoria))&&hasQ([p.nombre,p.categoria,p.descripcion]))
     .sort((a,b)=>CAT_ORDEN.indexOf(norm(a.categoria))-CAT_ORDEN.indexOf(norm(b.categoria)));
   const cats=[...new Set(list.map(p=>p.categoria))];
-  $("#main").innerHTML=`<div class="summary"><div class="left"><h2>${fd.cats.size===1?esc([...fd.cats][0]):"Platillos"}</h2><span>${list.length} platillos · con maridaje</span></div></div>
+  $("#main").innerHTML=`<div class="summary"><div class="left"><h2>${fd.cats.size===1?esc([...fd.cats][0]):"Platillos"}</h2><span>Elige tu platillo y te sugerimos vino y cóctel</span></div></div>
    ${list.length?cats.map(c=>`<h3 style="font-family:var(--cond);font-weight:500;font-size:18px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:22px 0 12px">${esc(c)}</h3>
-   <div class="dgrid">${list.filter(p=>p.categoria===c).map(p=>{
-     const ws=p.vinos.map(n=>byName(data.vinos,n)).filter(Boolean).slice(0,3);
-     const cs=p.cocteles.map(n=>byName(data.cocteles,n)).filter(Boolean).slice(0,2);
-     return `<button class="dcard" data-dish="${p.id}"><span class="eyebrow">${esc(p.categoria)}</span><h4>${esc(p.nombre)}</h4><p>${esc(p.descripcion)}</p>
-       <div class="foot"><span class="price">${money(p.precio)}</span><span class="pairs">${ws.length||cs.length?"<small>Marida</small>":""}${ws.map(w=>bottle(w.tipo,w.nombre,w.foto)).join("")}${cs.map(c=>{const u=cocktailImg(c,false);return u?`<img class="cph" src="${u}" alt="">`:"";}).join("")}</span></div></button>`;}).join("")}</div>`).join(""):empty()}`;
+   <div class="dlist">${list.filter(p=>p.categoria===c).map(p=>`<button class="drow" data-dish="${p.id}"><span>${esc(p.nombre)}</span><span class="go">Ver maridaje ›</span></button>`).join("")}</div>`).join(""):empty()}`;
   $("#main").querySelectorAll("[data-dish]").forEach(b=>b.onclick=()=>openDish(b.dataset.dish));
   const er=$("#emptyReset"); if(er) er.onclick=()=>{fd.cats.clear();resetAll();};
 }
@@ -647,7 +647,7 @@ function openDish(id){
   const cs=p.cocteles.map(n=>byName(data.cocteles,n)).filter(Boolean);
   openOverlay(`${closeBtn}
     ${p.foto?`<img class="dish-img" src="${esc(p.foto)}" alt="">`:""}
-    <div class="dish-head"><div><span class="eyebrow" style="font-size:13px;color:var(--accent)">${esc(p.categoria)}</span><h2>${esc(p.nombre)}</h2><p>${esc(p.descripcion)}</p></div><div class="price">${money(p.precio)}</div></div>
+    <div class="dish-head"><div><span class="eyebrow" style="font-size:13px;color:var(--accent)">${esc(p.categoria)} · Maridaje</span><h2>${esc(p.nombre)}</h2><p>${esc(p.descripcion)}</p></div></div>
     ${ws.length?`<div class="pair-sec"><h5>Vinos que maridan</h5><div class="prow">${ws.map(w=>`<button class="pcard" data-w="${w.id}"><div class="b">${bottle(w.tipo,w.nombre,w.foto)}</div><div><b>${esc(w.nombre)}</b><span>${tipoOf(w.tipo).label} · ${esc(w.uva)}</span><div class="pr">${w.precioCopa?`Copa ${money(w.precioCopa)} · `:""}${money(w.precioBotella)}</div></div></button>`).join("")}</div></div>`:""}
     ${cs.length?`<div class="pair-sec"><h5>Cócteles que maridan</h5><div class="prow">${cs.map(c=>`<button class="pcard" data-c="${c.id}"><div class="b">${cocktailImg(c)?`<img class="cphoto" src="${cocktailImg(c)}" alt="">`:glassSvg(c)}</div><div><b>${esc(c.nombre)}</b><span>${esc(c.ingredientes)}</span><div class="pr">${money(c.precio)}</div></div></button>`).join("")}</div></div>`:""}
   `,"sheet");
