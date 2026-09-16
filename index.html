@@ -223,7 +223,7 @@ function imgUrl(v){
     const d=v.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([\w-]+)/);
     return d?`https://lh3.googleusercontent.com/d/${d[1]}=w1200`:v;
   }
-  return "promos/"+v.replace(/^\/?(promos\/)?/,"");
+  return v.replace(/^\/+/,"");
 }
 function toDate(v){ // -> "YYYY-MM-DD" o ""
   if(v===""||v==null) return "";
