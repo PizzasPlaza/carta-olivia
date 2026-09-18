@@ -235,6 +235,13 @@ main.list{overflow:auto;padding-block:20px 60px;padding-bottom:calc(60px + env(s
   .tabs{margin-right:0}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* --- Selector de idioma --- */
+.langs{display:flex;gap:2px;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--card);margin-left:4px}
+.langs button{font-family:var(--cond);font-size:13px;letter-spacing:.08em;font-weight:500;border:0;background:none;color:var(--muted);
+  padding:6px 10px;border-radius:999px;cursor:pointer;line-height:1;transition:background .15s,color .15s}
+.langs button[aria-pressed="true"]{background:var(--accent);color:#fff}
+@media (max-width:820px){.langs button{padding:5px 7px;font-size:12px}}
 </style>
 </head>
 <body>
@@ -246,6 +253,11 @@ main.list{overflow:auto;padding-block:20px 60px;padding-bottom:calc(60px + env(s
       <button class="tab" role="tab" data-tab="cocteles" aria-selected="false">Cócteles</button>
       <button class="tab" role="tab" data-tab="platillos" aria-selected="false">Sugerencias sommelier</button>
     </div>
+    <div class="langs" id="langs" role="group" aria-label="Idioma">
+      <button type="button" data-lang="es" aria-pressed="true">ES</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      <button type="button" data-lang="it" aria-pressed="false">IT</button>
+    </div>
     <span class="status" id="offline" hidden><i></i>Sin conexión</span>
     <button class="btn promo" id="promoBtn" hidden>★ Promociones</button>
     <label class="search" for="q">
@@ -255,7 +267,7 @@ main.list{overflow:auto;padding-block:20px 60px;padding-bottom:calc(60px + env(s
   </header>
   <div class="body">
     <aside class="filters" id="filters"></aside>
-    <main class="list" id="main"><p class="notice">Cargando la carta…</p></main>
+    <main class="list" id="main"><p class="notice" id="loading">Cargando la carta…</p></main>
   </div>
 </div>
 <div id="overlay"></div>
@@ -270,6 +282,143 @@ const norm=s=>String(s??"").trim().toLowerCase().normalize("NFD").replace(/[̀-�
 const yes=v=>["si","s","x","1","true","verdadero","yes"].includes(norm(v));
 const num=v=>{if(typeof v==="number")return v;const s=String(v??"").replace(/[^0-9.]/g,"");return s===""?null:Number(s);};
 const txt=v=>String(v??"").trim();
+
+/* ---------- Idiomas ---------- */
+const LANGS=["es","en","it"];
+const I18N={
+es:{
+ tab_vinos:"Vinos",tab_cocteles:"Cócteles",tab_platillos:"Sugerencias sommelier",
+ offline:"Sin conexión",promos_btn:"★ Promociones",
+ buscar_vinos:"Buscar vino, uva, platillo…",buscar_cocteles:"Buscar cóctel, ingrediente…",buscar_platillos:"Buscar platillo, ingrediente…",
+ cargando:"Cargando la carta…",
+ error_carta:"No se pudo leer la carta.<br>Revisa la conexión a internet o que la hoja esté publicada en la web.",
+ reintentar:"Reintentar",sin_resultados:"Nada coincide con esos filtros.",limpiar:"Limpiar filtros",
+ no_vinos:"No hay vinos disponibles en la hoja.",no_cocteles:"No hay cócteles en la hoja.",
+ no_platillos:"Aún no hay platillos. Agrega la hoja «Platillos» al Google Sheet.",
+ nuestros_vinos:"Nuestros vinos",etiqueta:"etiqueta",etiquetas:"etiquetas",en_la_cava:"en la cava",
+ f_tipo:"Tipo",f_servicio:"Servicio",f_por_copa:"Por copa",f_pais:"País",f_todos:"Todos",f_uva:"Uva",f_todas:"Todas",
+ f_botella_hasta:"Botella hasta",f_destilado:"Destilado",f_sabor:"Sabor",f_precio_hasta:"Precio hasta",f_categoria:"Categoría",
+ v_cava:"Cava",v_mapa:"Mapa",v_lista:"Lista",v_vista:"Vista",map_todos:"✕ Todos los países",varias_regiones:"Varias regiones",
+ badge_casa:"De la casa",badge_fav:"Favorito",
+ d_origen:"Origen",d_cuerpo:"Cuerpo",d_notas:"Notas de cata",d_marida:"Marida con",d_copa:"Copa",d_botella:"Botella",
+ d_copa_oz:"Copa 4 oz",d_botella_ml:"Botella 750 ml",d_precio:"Precio",d_ingredientes:"Ingredientes",
+ cocteleria:"Coctelería",coctel:"cóctel",cocteles:"cócteles",credito_fotos:"Fotos ilustrativas: Unsplash.",
+ sugerencias:"Sugerencias del sommelier",sugerencias_sub:"Elige tu platillo y te sugerimos vino y cóctel",
+ tip_platillo:"Toca un platillo para ver qué vino y cóctel le va mejor.",ver_maridaje:"Ver maridaje ›",maridaje:"Maridaje",
+ vinos_maridan:"Vinos que maridan",cocteles_maridan:"Cócteles que maridan",volver_a:"‹ Volver a",
+ promocion:"Promoción",cerrar:"Cerrar",
+ tipo_tinto:"Tinto",tipo_blanco:"Blanco",tipo_rosado:"Rosado",tipo_espumoso:"Espumoso",
+ tipos_tinto:"Tintos",tipos_blanco:"Blancos",tipos_rosado:"Rosados",tipos_espumoso:"Espumosos",
+ pais_italia:"Italia",pais_mexico:"México",pais_argentina:"Argentina",pais_chile:"Chile",pais_espana:"España",
+ pais_francia:"Francia",pais_portugal:"Portugal",pais_alemania:"Alemania",pais_estados_unidos:"Estados Unidos",
+ base_gin:"Gin",base_tequila:"Tequila",base_mezcal:"Mezcal",base_vodka:"Vodka",base_ron:"Ron",base_whisky:"Whisky",
+ base_espumoso:"Espumoso · Spritz",base_licor:"Licores",base_sin_alcohol:"Sin alcohol",base_otros:"Otros",
+ estilo_spritz:"Spritz",estilo_de_la_casa:"De la casa",estilo_clasico:"Clásico",estilo_frozen:"Frozen",estilo_cafe:"Café",estilo_sin_alcohol:"Sin alcohol",
+ sabor_citrico:"Cítrico",sabor_frutal:"Frutal",sabor_tropical:"Tropical",sabor_cremoso:"Cremoso",sabor_cafe:"Café",
+ sabor_amargo:"Amargo",sabor_seco:"Seco",sabor_dulce:"Dulce",sabor_herbal:"Herbal",sabor_especiado:"Especiado",sabor_refrescante:"Refrescante",
+ cat_entradas:"Entradas",cat_ensaladas:"Ensaladas",cat_pastas_y_risottos:"Pastas y risottos",cat_pastas:"Pastas",
+ cat_carnes_y_pescados:"Carnes y pescados",cat_pizzas:"Pizzas",cat_postres:"Postres",cat_sopas:"Sopas",cat_bebidas:"Bebidas"
+},
+en:{
+ tab_vinos:"Wines",tab_cocteles:"Cocktails",tab_platillos:"Sommelier pairings",
+ offline:"Offline",promos_btn:"★ Specials",
+ buscar_vinos:"Search wine, grape, dish…",buscar_cocteles:"Search cocktail, ingredient…",buscar_platillos:"Search dish, ingredient…",
+ cargando:"Loading the menu…",
+ error_carta:"The menu could not be loaded.<br>Please check the internet connection.",
+ reintentar:"Try again",sin_resultados:"Nothing matches those filters.",limpiar:"Clear filters",
+ no_vinos:"No wines available.",no_cocteles:"No cocktails available.",
+ no_platillos:"No dishes yet.",
+ nuestros_vinos:"Our wines",etiqueta:"label",etiquetas:"labels",en_la_cava:"in the cellar",
+ f_tipo:"Type",f_servicio:"Service",f_por_copa:"By the glass",f_pais:"Country",f_todos:"All",f_uva:"Grape",f_todas:"All",
+ f_botella_hasta:"Bottle up to",f_destilado:"Spirit",f_sabor:"Flavour",f_precio_hasta:"Price up to",f_categoria:"Category",
+ v_cava:"Cellar",v_mapa:"Map",v_lista:"List",v_vista:"View",map_todos:"✕ All countries",varias_regiones:"Various regions",
+ badge_casa:"House wine",badge_fav:"Favourite",
+ d_origen:"Origin",d_cuerpo:"Body",d_notas:"Tasting notes",d_marida:"Pairs with",d_copa:"Glass",d_botella:"Bottle",
+ d_copa_oz:"Glass 4 oz",d_botella_ml:"Bottle 750 ml",d_precio:"Price",d_ingredientes:"Ingredients",
+ cocteleria:"Cocktails",coctel:"cocktail",cocteles:"cocktails",credito_fotos:"Illustrative photos: Unsplash.",
+ sugerencias:"Sommelier pairings",sugerencias_sub:"Pick a dish and we suggest a wine and a cocktail",
+ tip_platillo:"Tap a dish to see which wine and cocktail suit it best.",ver_maridaje:"See pairing ›",maridaje:"Pairing",
+ vinos_maridan:"Wines that pair",cocteles_maridan:"Cocktails that pair",volver_a:"‹ Back to",
+ promocion:"Special",cerrar:"Close",
+ tipo_tinto:"Red",tipo_blanco:"White",tipo_rosado:"Rosé",tipo_espumoso:"Sparkling",
+ tipos_tinto:"Reds",tipos_blanco:"Whites",tipos_rosado:"Rosés",tipos_espumoso:"Sparkling wines",
+ pais_italia:"Italy",pais_mexico:"Mexico",pais_argentina:"Argentina",pais_chile:"Chile",pais_espana:"Spain",
+ pais_francia:"France",pais_portugal:"Portugal",pais_alemania:"Germany",pais_estados_unidos:"United States",
+ base_gin:"Gin",base_tequila:"Tequila",base_mezcal:"Mezcal",base_vodka:"Vodka",base_ron:"Rum",base_whisky:"Whisky",
+ base_espumoso:"Sparkling · Spritz",base_licor:"Liqueurs",base_sin_alcohol:"Alcohol free",base_otros:"Others",
+ estilo_spritz:"Spritz",estilo_de_la_casa:"House",estilo_clasico:"Classic",estilo_frozen:"Frozen",estilo_cafe:"Coffee",estilo_sin_alcohol:"Alcohol free",
+ sabor_citrico:"Citrus",sabor_frutal:"Fruity",sabor_tropical:"Tropical",sabor_cremoso:"Creamy",sabor_cafe:"Coffee",
+ sabor_amargo:"Bitter",sabor_seco:"Dry",sabor_dulce:"Sweet",sabor_herbal:"Herbal",sabor_especiado:"Spiced",sabor_refrescante:"Refreshing",
+ cat_entradas:"Starters",cat_ensaladas:"Salads",cat_pastas_y_risottos:"Pasta & risotto",cat_pastas:"Pasta",
+ cat_carnes_y_pescados:"Meat & fish",cat_pizzas:"Pizzas",cat_postres:"Desserts",cat_sopas:"Soups",cat_bebidas:"Drinks"
+},
+it:{
+ tab_vinos:"Vini",tab_cocteles:"Cocktail",tab_platillos:"Consigli del sommelier",
+ offline:"Senza connessione",promos_btn:"★ Promozioni",
+ buscar_vinos:"Cerca vino, uva, piatto…",buscar_cocteles:"Cerca cocktail, ingrediente…",buscar_platillos:"Cerca piatto, ingrediente…",
+ cargando:"Caricamento della carta…",
+ error_carta:"Non è stato possibile caricare la carta.<br>Controlla la connessione a internet.",
+ reintentar:"Riprova",sin_resultados:"Nessun risultato con questi filtri.",limpiar:"Azzera i filtri",
+ no_vinos:"Nessun vino disponibile.",no_cocteles:"Nessun cocktail disponibile.",
+ no_platillos:"Non ci sono ancora piatti.",
+ nuestros_vinos:"I nostri vini",etiqueta:"etichetta",etiquetas:"etichette",en_la_cava:"in cantina",
+ f_tipo:"Tipo",f_servicio:"Servizio",f_por_copa:"Al calice",f_pais:"Paese",f_todos:"Tutti",f_uva:"Uva",f_todas:"Tutte",
+ f_botella_hasta:"Bottiglia fino a",f_destilado:"Distillato",f_sabor:"Gusto",f_precio_hasta:"Prezzo fino a",f_categoria:"Categoria",
+ v_cava:"Cantina",v_mapa:"Mappa",v_lista:"Elenco",v_vista:"Vista",map_todos:"✕ Tutti i paesi",varias_regiones:"Varie regioni",
+ badge_casa:"Della casa",badge_fav:"Preferito",
+ d_origen:"Origine",d_cuerpo:"Corpo",d_notas:"Note di degustazione",d_marida:"Si abbina con",d_copa:"Calice",d_botella:"Bottiglia",
+ d_copa_oz:"Calice 4 oz",d_botella_ml:"Bottiglia 750 ml",d_precio:"Prezzo",d_ingredientes:"Ingredienti",
+ cocteleria:"Cocktail",coctel:"cocktail",cocteles:"cocktail",credito_fotos:"Foto illustrative: Unsplash.",
+ sugerencias:"Consigli del sommelier",sugerencias_sub:"Scegli il piatto e ti consigliamo vino e cocktail",
+ tip_platillo:"Tocca un piatto per vedere quale vino e quale cocktail si abbinano meglio.",ver_maridaje:"Vedi abbinamento ›",maridaje:"Abbinamento",
+ vinos_maridan:"Vini in abbinamento",cocteles_maridan:"Cocktail in abbinamento",volver_a:"‹ Torna a",
+ promocion:"Promozione",cerrar:"Chiudi",
+ tipo_tinto:"Rosso",tipo_blanco:"Bianco",tipo_rosado:"Rosato",tipo_espumoso:"Spumante",
+ tipos_tinto:"Rossi",tipos_blanco:"Bianchi",tipos_rosado:"Rosati",tipos_espumoso:"Spumanti",
+ pais_italia:"Italia",pais_mexico:"Messico",pais_argentina:"Argentina",pais_chile:"Cile",pais_espana:"Spagna",
+ pais_francia:"Francia",pais_portugal:"Portogallo",pais_alemania:"Germania",pais_estados_unidos:"Stati Uniti",
+ base_gin:"Gin",base_tequila:"Tequila",base_mezcal:"Mezcal",base_vodka:"Vodka",base_ron:"Rum",base_whisky:"Whisky",
+ base_espumoso:"Spumante · Spritz",base_licor:"Liquori",base_sin_alcohol:"Analcolico",base_otros:"Altri",
+ estilo_spritz:"Spritz",estilo_de_la_casa:"Della casa",estilo_clasico:"Classico",estilo_frozen:"Frozen",estilo_cafe:"Caffè",estilo_sin_alcohol:"Analcolico",
+ sabor_citrico:"Agrumato",sabor_frutal:"Fruttato",sabor_tropical:"Tropicale",sabor_cremoso:"Cremoso",sabor_cafe:"Caffè",
+ sabor_amargo:"Amaro",sabor_seco:"Secco",sabor_dulce:"Dolce",sabor_herbal:"Erbaceo",sabor_especiado:"Speziato",sabor_refrescante:"Rinfrescante",
+ cat_entradas:"Antipasti",cat_ensaladas:"Insalate",cat_pastas_y_risottos:"Paste e risotti",cat_pastas:"Paste",
+ cat_carnes_y_pescados:"Carni e pesci",cat_pizzas:"Pizze",cat_postres:"Dolci",cat_sopas:"Zuppe",cat_bebidas:"Bevande"
+}};
+let lang=(()=>{const v=store.get("olivia_lang");return LANGS.includes(v)?v:"es";})();
+const T=k=>(I18N[lang]&&I18N[lang][k])||I18N.es[k]||"";
+/* texto del Sheet: usa la columna <campo>_en / <campo>_it y si está vacía cae al español */
+/* 1º columna <campo>_en / <campo>_it de la misma fila · 2º hoja "Traducciones" · 3º español */
+const L=(o,f)=>{
+  if(!o) return "";
+  if(lang!=="es"){
+    const v=o[f+"_"+lang]; if(v&&String(v).trim()) return v;
+    const t=(data.trad||{})[norm(o.nombre||o.titulo||"")+"|"+f+"|"+lang]; if(t) return t;
+  }
+  return o[f]||"";
+};
+const tr=(pre,v,def)=>T(pre+"_"+norm(v))||def||v||"";
+const tipoLabel=k=>T("tipo_"+k)||k;
+const tipoPlural=k=>T("tipos_"+k)||k;
+const paisLabel=p=>tr("pais",p,p);
+const saborLabel=s=>tr("sabor",s,s);
+const estiloLabel=e=>tr("estilo",e,e);
+const catLabel=c=>tr("cat",c,c);
+const plural=(n,a,b)=>n===1?T(a):T(b);
+function applyStatic(){
+  document.documentElement.lang = lang==="es"?"es-MX":lang;
+  document.querySelectorAll(".tab").forEach(t=>t.textContent=T("tab_"+t.dataset.tab));
+  $("#offline").innerHTML=`<i></i>${T("offline")}`;
+  $("#promoBtn").textContent=T("promos_btn");
+  $("#langs").setAttribute("aria-label",lang==="es"?"Idioma":lang==="en"?"Language":"Lingua");
+  document.querySelectorAll("[data-lang]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lang===lang));
+}
+function setLang(l){
+  if(!LANGS.includes(l)||l===lang) return;
+  lang=l; store.set("olivia_lang",l); applyStatic();
+  const ov=$("#overlay").innerHTML; if(ov) closeOverlay();
+  render();
+}
 
 const TIPOS=[
   {k:"tinto",label:"Tinto",plural:"Tintos",color:"var(--tinto)",fill:"#6e1a27"},
@@ -305,19 +454,30 @@ function parseWorkbook(buf){
   const wb=XLSX.read(buf,{type:"array"});
   const vinos=rows(wb,"vinos").map((r,i)=>({id:"v"+i,foto:imgUrl(txt(r.foto)),nombre:txt(r.nombre),bodega:txt(r.bodega),tipo:TIPOS.some(t=>t.k===norm(r.tipo))?norm(r.tipo):"tinto",
     anada:txt(r.anada),uva:txt(r.uva),cuerpo:num(r.cuerpo),pais:txt(r.pais),region:txt(r.region),precioCopa:num(r.precio_copa),precioBotella:num(r.precio_botella),
-    notas:txt(r.notas),maridaje:txt(r.maridaje),disponible:txt(r.disponible)===""?true:yes(r.disponible),destacado:yes(r.destacado)}))
+    notas:txt(r.notas),maridaje:txt(r.maridaje),
+    notas_en:txt(r.notas_en),notas_it:txt(r.notas_it),maridaje_en:txt(r.maridaje_en),maridaje_it:txt(r.maridaje_it),disponible:txt(r.disponible)===""?true:yes(r.disponible),destacado:yes(r.destacado)}))
     .filter(w=>w.nombre&&w.disponible&&w.precioBotella!=null);
   const cocteles=rows(wb,"cocteles").map((r,i)=>({id:"c"+i,foto:imgUrl(txt(r.foto)),nombre:txt(r.nombre),estilo:txt(r.estilo),base:txt(r.base),sabor:txt(r.sabor),
-    ingredientes:txt(r.ingredientes),descripcion:txt(r.descripcion),precio:num(r.precio),disponible:txt(r.disponible)===""?true:yes(r.disponible),destacado:yes(r.destacado)}))
+    ingredientes:txt(r.ingredientes),descripcion:txt(r.descripcion),
+    ingredientes_en:txt(r.ingredientes_en),ingredientes_it:txt(r.ingredientes_it),descripcion_en:txt(r.descripcion_en),descripcion_it:txt(r.descripcion_it),precio:num(r.precio),disponible:txt(r.disponible)===""?true:yes(r.disponible),destacado:yes(r.destacado)}))
     .filter(c=>c.nombre&&c.disponible);
   const promos=rows(wb,"promociones").map(r=>({imagen:imgUrl(txt(r.imagen)),titulo:txt(r.titulo),descripcion:txt(r.descripcion),precio:txt(r.precio),
+    titulo_en:txt(r.titulo_en),titulo_it:txt(r.titulo_it),descripcion_en:txt(r.descripcion_en),descripcion_it:txt(r.descripcion_it),
     ini:toDate(r.fecha_inicio),fin:toDate(r.fecha_fin),dias:txt(r.dias),hIni:toMin(r.hora_inicio),hFin:toMin(r.hora_fin),activa:yes(r.activa)}))
     .filter(p=>(p.titulo||p.imagen)&&p.activa);
   const splitList=v=>txt(v).split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean);
   const platillos=rows(wb,"platillos").map((r,i)=>({id:"p"+i,categoria:txt(r.categoria),nombre:txt(r.nombre),descripcion:txt(r.descripcion),precio:num(r.precio),
+    descripcion_en:txt(r.descripcion_en),descripcion_it:txt(r.descripcion_it),
     vinos:splitList(r.vinos),cocteles:splitList(r.cocteles),foto:imgUrl(txt(r.foto)),disponible:txt(r.disponible)===""?true:yes(r.disponible)}))
     .filter(p=>p.nombre&&p.disponible);
-  return {vinos,cocteles,promos,platillos};
+  const trad={};
+  rows(wb,"traducciones").forEach(r=>{
+    const nom=norm(r.nombre), campo=norm(r.campo);
+    if(!nom||!campo) return;
+    if(txt(r.en)) trad[nom+"|"+campo+"|en"]=txt(r.en);
+    if(txt(r.it)) trad[nom+"|"+campo+"|it"]=txt(r.it);
+  });
+  return {vinos,cocteles,promos,platillos,trad};
 }
 function imgUrl(v){
   if(!v) return "";
@@ -352,7 +512,7 @@ async function load(){
   }catch(e){
     const c=store.get("olivia_cache");
     if(c){ try{data=JSON.parse(c);}catch(_){} $("#offline").hidden=false; }
-    else { $("#main").innerHTML=`<p class="notice">No se pudo leer la carta.<br>Revisa la conexión a internet o que la hoja esté publicada en la web.<br><br><button class="btn" id="retry">Reintentar</button></p>`; $("#retry").onclick=load; return; }
+    else { $("#main").innerHTML=`<p class="notice">${T("error_carta")}<br><br><button class="btn" id="retry">${T("reintentar")}</button></p>`; $("#retry").onclick=load; return; }
   }
   render(); updatePromoBtn();
   if(!promoShownThisGuest && !$("#overlay").innerHTML && activePromos().length){ promoShownThisGuest=true; waitingGuest=false; openPromos(); }
@@ -397,7 +557,7 @@ function glassSvg(c){
 /* ---------- Render general ---------- */
 function render(){
   document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",t.dataset.tab===tab));
-  $("#q").placeholder= tab==="vinos"?"Buscar vino, uva, platillo…":tab==="cocteles"?"Buscar cóctel, ingrediente…":"Buscar platillo, ingrediente…";
+  $("#q").placeholder=T("buscar_"+tab);
   if(tab==="vinos"){renderWineFilters();renderWines();}
   else if(tab==="cocteles"){renderCocktailFilters();renderCocktails();}
   else {renderDishFilters();renderDishes();}
@@ -409,7 +569,7 @@ function chipsBind(sel,set,after){
   document.querySelectorAll(sel).forEach(b=>b.onclick=()=>{const k=b.dataset.k;set.has(k)?set.delete(k):set.add(k);b.setAttribute("aria-pressed",set.has(k));after();});
 }
 function resetAll(){fv.tipos.clear();fv.pais="";fv.uva="";fv.max=null;fv.copa=false;fc.estilos.clear();fc.base="";fc.bases.clear();fc.sabores.clear();fc.max=null;q="";$("#q").value="";render();}
-function empty(){ return `<p class="notice">Nada coincide con esos filtros.<br><button class="linkbtn" id="emptyReset">Limpiar filtros</button></p>`; }
+function empty(){ return `<p class="notice">${T("sin_resultados")}<br><button class="linkbtn" id="emptyReset">${T("limpiar")}</button></p>`; }
 function bindList(){ $("#main").querySelectorAll(".card").forEach(c=>c.onclick=()=>c.dataset.id[0]==="v"?openWine(c.dataset.id):openCocktail(c.dataset.id)); const er=$("#emptyReset"); if(er) er.onclick=resetAll; }
 const hasQ=(arr)=>{const s=q.trim().toLowerCase();return !s||arr.join(" ").toLowerCase().includes(s);};
 
@@ -421,12 +581,12 @@ function renderWineFilters(){
   const maxP=Math.ceil(Math.max(500,...W.map(w=>w.precioBotella||0))/50)*50;
   if(fv.max!=null&&fv.max>maxP) fv.max=null;
   $("#filters").innerHTML=`
-    <div class="fgroup"><h3>Tipo</h3><div class="chips">${TIPOS.filter(t=>W.some(w=>w.tipo===t.k)).map(t=>`<button class="chip" data-k="${t.k}" data-g="tipo" aria-pressed="${fv.tipos.has(t.k)}"><span class="dot" style="background:${t.color}"></span>${t.label}</button>`).join("")}</div></div>
-    <div class="fgroup"><h3>Servicio</h3><div class="chips"><button class="chip" id="fCopa" aria-pressed="${fv.copa}">Por copa</button></div></div>
-    <div class="fgroup"><h3>País</h3><select class="sel" id="fPais"><option value="">Todos</option>${paises.map(p=>`<option ${p===fv.pais?"selected":""}>${esc(p)}</option>`).join("")}</select></div>
-    <div class="fgroup hide-sm"><h3>Uva</h3><select class="sel" id="fUva"><option value="">Todas</option>${uvas.map(p=>`<option ${p===fv.uva?"selected":""}>${esc(p)}</option>`).join("")}</select></div>
-    ${rangeHtml("fMax","Botella hasta",maxP,fv.max??maxP)}
-    <div class="fgroup"><button class="linkbtn" id="fReset">Limpiar filtros</button></div>`;
+    <div class="fgroup"><h3>${T("f_tipo")}</h3><div class="chips">${TIPOS.filter(t=>W.some(w=>w.tipo===t.k)).map(t=>`<button class="chip" data-k="${t.k}" data-g="tipo" aria-pressed="${fv.tipos.has(t.k)}"><span class="dot" style="background:${t.color}"></span>${tipoLabel(t.k)}</button>`).join("")}</div></div>
+    <div class="fgroup"><h3>${T("f_servicio")}</h3><div class="chips"><button class="chip" id="fCopa" aria-pressed="${fv.copa}">${T("f_por_copa")}</button></div></div>
+    <div class="fgroup"><h3>${T("f_pais")}</h3><select class="sel" id="fPais"><option value="">${T("f_todos")}</option>${paises.map(p=>`<option value="${esc(p)}" ${p===fv.pais?"selected":""}>${esc(paisLabel(p))}</option>`).join("")}</select></div>
+    <div class="fgroup hide-sm"><h3>${T("f_uva")}</h3><select class="sel" id="fUva"><option value="">${T("f_todas")}</option>${uvas.map(p=>`<option ${p===fv.uva?"selected":""}>${esc(p)}</option>`).join("")}</select></div>
+    ${rangeHtml("fMax",T("f_botella_hasta"),maxP,fv.max??maxP)}
+    <div class="fgroup"><button class="linkbtn" id="fReset">${T("limpiar")}</button></div>`;
   chipsBind('[data-g="tipo"]',fv.tipos,renderWines);
   $("#fCopa").onclick=e=>{fv.copa=!fv.copa;e.currentTarget.setAttribute("aria-pressed",fv.copa);renderWines();};
   $("#fPais").onchange=e=>{fv.pais=e.target.value;renderWines();};
@@ -436,11 +596,11 @@ function renderWineFilters(){
 }
 function renderWines(){
   if(tab!=="vinos") return;
-  if(!data.vinos.length){ $("#main").innerHTML=`<p class="notice">No hay vinos disponibles en la hoja.</p>`; return; }
+  if(!data.vinos.length){ $("#main").innerHTML=`<p class="notice">${T("no_vinos")}</p>`; return; }
   if(view==="mapa"&&!window.L) view="cava";
   const list=filteredWines();
-  const title=view==="mapa"&&mapState.level==="region"?esc(mapState.pais):(fv.tipos.size===1?tipoOf([...fv.tipos][0]).plural:"Nuestros vinos");
-  const head=`<div class="summary"><div class="left"><h2>${title}</h2><span>${list.length} ${list.length===1?"etiqueta":"etiquetas"} en la cava</span></div>${viewsHtml()}</div>`;
+  const title=view==="mapa"&&mapState.level==="region"?esc(paisLabel(mapState.pais)):(fv.tipos.size===1?tipoPlural([...fv.tipos][0]):T("nuestros_vinos"));
+  const head=`<div class="summary"><div class="left"><h2>${title}</h2><span>${list.length} ${plural(list.length,"etiqueta","etiquetas")} ${T("en_la_cava")}</span></div>${viewsHtml()}</div>`;
   if(mapObj&&view!=="mapa"){ mapObj.remove(); mapObj=null; }
   if(!list.length){ $("#main").innerHTML=head+empty(); bindViews(); bindList(); return; }
   if(view==="cava"){
@@ -448,18 +608,18 @@ function renderWines(){
     $("#main").querySelectorAll(".slot").forEach(c=>c.onclick=()=>openWine(c.dataset.id));
     $("#main").querySelectorAll(".slot .b img").forEach(img=>{const fit=()=>{const r=img.naturalHeight/img.naturalWidth; if(r>3.95) img.style.setProperty("--bh",Math.round(280*Math.min(1.14,r/3.9))+"px");}; img.complete?fit():img.addEventListener("load",fit,{once:true});});
   } else if(view==="mapa"){
-    $("#main").innerHTML=head+`<div class="mapwrap"><div id="map"></div>${mapState.level==="region"?`<div class="mapbar"><button id="mapBack">✕ Todos los países</button></div>`:""}</div>`;
+    $("#main").innerHTML=head+`<div class="mapwrap"><div id="map"></div>${mapState.level==="region"?`<div class="mapbar"><button id="mapBack">${T("map_todos")}</button></div>`:""}</div>`;
     const b=$("#mapBack"); if(b) b.onclick=()=>{ mapState={level:"pais"}; renderWines(); };
     renderMap(list);
   } else {
     $("#main").innerHTML=head+`<div class="grid">${list.map(w=>`<button class="card" data-id="${w.id}">
-      ${w.destacado?'<span class="badge">De la casa</span>':""}
+      ${w.destacado?`<span class="badge">${T("badge_casa")}</span>`:""}
       ${bottle(w.tipo,w.nombre,w.foto)}
       <div class="meta">
-        <span class="eyebrow">${tipoOf(w.tipo).label}${w.anada?" · "+esc(w.anada):""}</span>
+        <span class="eyebrow">${tipoLabel(w.tipo)}${w.anada?" · "+esc(w.anada):""}</span>
         <h4>${esc(w.nombre)}</h4><span class="sub">${esc(w.bodega)}</span>
-        <span class="origen">${esc(w.uva)}<br><span style="color:var(--muted)">${esc([w.region,w.pais].filter(Boolean).join(", "))}</span></span>
-        <div class="prices">${w.precioCopa?`<div><small>Copa</small>${money(w.precioCopa)}</div>`:""}<div><small>Botella</small>${money(w.precioBotella)}</div></div>
+        <span class="origen">${esc(w.uva)}<br><span style="color:var(--muted)">${esc([w.region,paisLabel(w.pais)].filter(Boolean).join(", "))}</span></span>
+        <div class="prices">${w.precioCopa?`<div><small>${T("d_copa")}</small>${money(w.precioCopa)}</div>`:""}<div><small>${T("d_botella")}</small>${money(w.precioBotella)}</div></div>
       </div></button>`).join("")}</div>`;
     bindList();
   }
@@ -493,20 +653,20 @@ function regionOf(w){
   const r=REGIONES.find(x=>x[0].test(t));
   if(r) return {region:r[1],pais:w.pais||r[2],lat:r[3],lng:r[4]};
   const c=(norm(w.pais)==="italia"?[40.9,11.3]:PAISES[norm(w.pais)])||[0,0];
-  return {region:"Varias regiones",pais:w.pais||"",lat:c[0],lng:c[1]};
+  return {region:T("varias_regiones"),pais:w.pais||"",lat:c[0],lng:c[1]};
 }
 function filteredWines(){
   return data.vinos.filter(w=>(!fv.tipos.size||fv.tipos.has(w.tipo))&&(!fv.pais||w.pais===fv.pais)
     &&(!fv.uva||w.uva.toLowerCase().includes(fv.uva.toLowerCase()))&&(!fv.copa||w.precioCopa)&&(fv.max==null||(w.precioBotella||0)<=fv.max)
-    &&hasQ([w.nombre,w.bodega,w.uva,w.pais,w.region,w.notas,w.maridaje]))
+    &&hasQ([w.nombre,w.bodega,w.uva,w.pais,paisLabel(w.pais),w.region,w.notas,w.maridaje,L(w,"notas"),L(w,"maridaje")]))
     .sort((a,b)=>(b.destacado-a.destacado)||TIPOS.findIndex(t=>t.k===a.tipo)-TIPOS.findIndex(t=>t.k===b.tipo)||(a.precioBotella||0)-(b.precioBotella||0));
 }
 function viewsHtml(){
   const btn=(k,label,icon)=>`<button data-view="${k}" aria-pressed="${view===k}">${icon}${label}</button>`;
-  return `<div class="views" role="group" aria-label="Vista">
-    ${btn("cava","Cava",'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 2h2v4c0 1 2 2 2 5v11H7V11c0-3 2-4 2-5z"/><path d="M15 6h2v3c0 1 2 2 2 4v9h-6v-9c0-2 2-3 2-4z" opacity=".6"/></svg>')}
-    ${window.L?btn("mapa","Mapa",'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>'):""}
-    ${btn("lista","Lista",'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>')}
+  return `<div class="views" role="group" aria-label="${T("v_vista")}">
+    ${btn("cava",T("v_cava"),'<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 2h2v4c0 1 2 2 2 5v11H7V11c0-3 2-4 2-5z"/><path d="M15 6h2v3c0 1 2 2 2 4v9h-6v-9c0-2 2-3 2-4z" opacity=".6"/></svg>')}
+    ${window.L?btn("mapa",T("v_mapa"),'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg>'):""}
+    ${btn("lista",T("v_lista"),'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>')}
   </div>`;
 }
 function bindViews(){
@@ -515,7 +675,7 @@ function bindViews(){
 function renderCava(list){
   const groups=TIPOS.map(t=>({t,items:list.filter(w=>w.tipo===t.k)})).filter(g=>g.items.length);
   return `<div class="cava">${groups.map(g=>`<section class="shelf">
-    <h3>${g.t.plural}<small>${g.items.length} ${g.items.length===1?"etiqueta":"etiquetas"}</small></h3>
+    <h3>${tipoPlural(g.t.k)}<small>${g.items.length} ${plural(g.items.length,"etiqueta","etiquetas")}</small></h3>
     <div class="rackwrap"><div class="plank" aria-hidden="true"></div>
       <div class="rack">${g.items.map(w=>`<button class="slot card-like" data-id="${w.id}">
         <div class="b">${bottle(w.tipo,w.nombre,w.foto)}</div>
@@ -526,7 +686,7 @@ function renderCava(list){
 }
 let mapObj=null, mapState={level:"pais"};
 function pinIcon(title,count){
-  return L.divIcon({className:"",iconSize:[0,0],html:`<div class="pin"><div class="lbl">${esc(title)}<small>${count} ${count===1?"etiqueta":"etiquetas"}</small></div>
+  return L.divIcon({className:"",iconSize:[0,0],html:`<div class="pin"><div class="lbl">${esc(title)}<small>${count} ${plural(count,"etiqueta","etiquetas")}</small></div>
     <svg class="drop" viewBox="0 0 30 38"><path d="M15 37C15 37 2 22 2 14a13 13 0 0 1 26 0c0 8-13 23-13 23z" fill="#4e5a38" stroke="#fff" stroke-width="2"/><path d="M13.5 6h3v4c0 .8 1.8 1.6 1.8 3.8V24h-6.6V13.8c0-2.2 1.8-3 1.8-3.8z" fill="#fff"/></svg></div>`});
 }
 function renderMap(list){
@@ -541,7 +701,7 @@ function renderMap(list){
     const byP={}; withR.forEach(({w,r})=>{ (byP[r.pais]??=[]).push({w,r}); });
     Object.entries(byP).forEach(([p,arr])=>{
       const c=PAISES[norm(p)]||[arr[0].r.lat,arr[0].r.lng];
-      pts.push(c); L.marker(c,{icon:pinIcon(p,arr.length)}).addTo(mapObj).on("click",()=>{ mapState={level:"region",pais:p}; renderWines(); });
+      pts.push(c); L.marker(c,{icon:pinIcon(paisLabel(p),arr.length)}).addTo(mapObj).on("click",()=>{ mapState={level:"region",pais:p}; renderWines(); });
     });
   } else {
     const inP=withR.filter(x=>x.r.pais===mapState.pais);
@@ -564,17 +724,17 @@ function showMapCards(ws){
 function openWine(id){
   const w=data.vinos.find(x=>x.id===id); if(!w) return;
   const t=tipoOf(w.tipo), cu=w.cuerpo||0;
-  openOverlay(`${closeBtn}<div class="detail">${bottle(w.tipo,w.nombre,w.foto)}<div>
-    <span class="eyebrow" style="font-size:12px;color:${t.color}">${t.label}${w.anada?" · "+esc(w.anada):""}</span>
+  openOverlay(`${closeBtn()}<div class="detail">${bottle(w.tipo,w.nombre,w.foto)}<div>
+    <span class="eyebrow" style="font-size:12px;color:${t.color}">${tipoLabel(w.tipo)}${w.anada?" · "+esc(w.anada):""}</span>
     <h2>${esc(w.nombre)}</h2><div style="color:var(--muted);font-size:17px">${esc(w.bodega)}</div>
     <dl class="kv">
-      ${w.uva?`<dt>Uva</dt><dd>${esc(w.uva)}</dd>`:""}
-      <dt>Origen</dt><dd>${esc([w.region,w.pais].filter(Boolean).join(", "))}</dd>
-      ${cu?`<dt>Cuerpo</dt><dd><span class="body-scale" aria-label="Cuerpo ${cu} de 5">${[1,2,3,4,5].map(i=>`<i class="${i<=cu?"on":""}"></i>`).join("")}</span></dd>`:""}
+      ${w.uva?`<dt>${T("f_uva")}</dt><dd>${esc(w.uva)}</dd>`:""}
+      <dt>${T("d_origen")}</dt><dd>${esc([w.region,paisLabel(w.pais)].filter(Boolean).join(", "))}</dd>
+      ${cu?`<dt>${T("d_cuerpo")}</dt><dd><span class="body-scale" aria-label="${T("d_cuerpo")} ${cu}/5">${[1,2,3,4,5].map(i=>`<i class="${i<=cu?"on":""}"></i>`).join("")}</span></dd>`:""}
     </dl>
-    ${w.notas?`<h5>Notas de cata</h5><p>${esc(w.notas)}</p>`:""}
-    ${dishChips("vinos",w.nombre)||(w.maridaje?`<h5>Marida con</h5><p>${esc(w.maridaje)}</p>`:"")}
-    <div class="prices">${w.precioCopa?`<div><small>Copa 4 oz</small>${money(w.precioCopa)}</div>`:""}<div><small>Botella 750 ml</small>${money(w.precioBotella)}</div></div>
+    ${L(w,"notas")?`<h5>${T("d_notas")}</h5><p>${esc(L(w,"notas"))}</p>`:""}
+    ${dishChips("vinos",w.nombre)||(L(w,"maridaje")?`<h5>${T("d_marida")}</h5><p>${esc(L(w,"maridaje"))}</p>`:"")}
+    <div class="prices">${w.precioCopa?`<div><small>${T("d_copa_oz")}</small>${money(w.precioCopa)}</div>`:""}<div><small>${T("d_botella_ml")}</small>${money(w.precioBotella)}</div></div>
   </div></div>${backToDish()}`);
   bindDishChips();
 }
@@ -583,7 +743,7 @@ function openWine(id){
 const BASE_ORDEN=["gin","ginebra","tequila","mezcal","vodka","ron","whisky","espumoso","licor","licores","sin_alcohol"];
 const BASE_LABEL={gin:"Gin",ginebra:"Gin",tequila:"Tequila",mezcal:"Mezcal",vodka:"Vodka",ron:"Ron",whisky:"Whisky",espumoso:"Espumoso · Spritz",licor:"Licores",licores:"Licores",sin_alcohol:"Sin alcohol"};
 const baseKey=b=>{const k=norm(b||"otros"); return k==="ginebra"?"gin":k==="licores"?"licor":k;};
-const baseLabel=b=>BASE_LABEL[baseKey(b)]||(b||"Otros");
+const baseLabel=b=>T("base_"+baseKey(b))||BASE_LABEL[baseKey(b)]||(b||T("base_otros"));
 const baseRank=b=>{const i=BASE_ORDEN.indexOf(baseKey(b)); return i<0?50:i;};
 function renderCocktailFilters(){
   const C=data.cocteles;
@@ -592,10 +752,10 @@ function renderCocktailFilters(){
   const maxP=Math.ceil(Math.max(100,...C.map(c=>c.precio||0))/10)*10;
   if(fc.max!=null&&fc.max>maxP) fc.max=null;
   $("#filters").innerHTML=`
-    <div class="fgroup"><h3>Destilado</h3><div class="chips">${bases.map(b=>`<button class="chip" data-k="${esc(baseKey(b))}" data-g="base" aria-pressed="${fc.bases.has(baseKey(b))}">${esc(baseLabel(b))}</button>`).join("")}</div></div>
-    <div class="fgroup hide-sm"><h3>Sabor</h3><div class="chips">${sabores.map(s=>`<button class="chip" data-k="${esc(s)}" data-g="sabor" aria-pressed="${fc.sabores.has(s)}"><span class="dot" style="background:${SABOR_COLOR[norm(s)]||"var(--accent)"}"></span>${esc(s)}</button>`).join("")}</div></div>
-    ${rangeHtml("cMax","Precio hasta",maxP,fc.max??maxP)}
-    <div class="fgroup"><button class="linkbtn" id="fReset">Limpiar filtros</button></div>`;
+    <div class="fgroup"><h3>${T("f_destilado")}</h3><div class="chips">${bases.map(b=>`<button class="chip" data-k="${esc(baseKey(b))}" data-g="base" aria-pressed="${fc.bases.has(baseKey(b))}">${esc(baseLabel(b))}</button>`).join("")}</div></div>
+    <div class="fgroup hide-sm"><h3>${T("f_sabor")}</h3><div class="chips">${sabores.map(s=>`<button class="chip" data-k="${esc(s)}" data-g="sabor" aria-pressed="${fc.sabores.has(s)}"><span class="dot" style="background:${SABOR_COLOR[norm(s)]||"var(--accent)"}"></span>${esc(saborLabel(s))}</button>`).join("")}</div></div>
+    ${rangeHtml("cMax",T("f_precio_hasta"),maxP,fc.max??maxP)}
+    <div class="fgroup"><button class="linkbtn" id="fReset">${T("limpiar")}</button></div>`;
   chipsBind('[data-g="base"]',fc.bases,renderCocktails);
   chipsBind('[data-g="sabor"]',fc.sabores,renderCocktails);
   $("#cMax").oninput=e=>{fc.max=Number(e.target.value);$("#cMaxOut").textContent=money(fc.max);renderCocktails();};
@@ -604,33 +764,33 @@ function renderCocktailFilters(){
 function renderCocktails(){
   if(tab!=="cocteles") return;
   const list=data.cocteles.filter(c=>(!fc.bases.size||fc.bases.has(baseKey(c.base)))&&(!fc.sabores.size||fc.sabores.has(c.sabor))
-    &&(fc.max==null||(c.precio||0)<=fc.max)&&hasQ([c.nombre,c.estilo,c.base,c.sabor,c.ingredientes,c.descripcion]))
+    &&(fc.max==null||(c.precio||0)<=fc.max)&&hasQ([c.nombre,c.estilo,c.base,baseLabel(c.base),c.sabor,c.ingredientes,c.descripcion,L(c,"ingredientes"),L(c,"descripcion")]))
     .sort((a,b)=>baseRank(a.base)-baseRank(b.base)||(b.destacado-a.destacado)||(a.precio||0)-(b.precio||0));
-  if(!data.cocteles.length){ $("#main").innerHTML=`<p class="notice">No hay cócteles en la hoja.</p>`; return; }
+  if(!data.cocteles.length){ $("#main").innerHTML=`<p class="notice">${T("no_cocteles")}</p>`; return; }
   const groups=[...new Set(list.map(c=>baseKey(c.base)))];
   const card=c=>`<button class="card" data-id="${c.id}">
-      ${c.destacado?'<span class="badge">Favorito</span>':""}
+      ${c.destacado?`<span class="badge">${T("badge_fav")}</span>`:""}
       ${glass(c)}
       <div class="meta">
-        <span class="eyebrow">${esc(c.estilo||"")}</span>
+        <span class="eyebrow">${esc(estiloLabel(c.estilo||""))}</span>
         <h4>${esc(c.nombre)}</h4>
-        <span class="origen" style="color:var(--muted)">${esc(c.ingredientes)}</span>
-        <div class="prices"><div><small>Precio</small>${money(c.precio)}</div></div>
+        <span class="origen" style="color:var(--muted)">${esc(L(c,"ingredientes"))}</span>
+        <div class="prices"><div><small>${T("d_precio")}</small>${money(c.precio)}</div></div>
       </div></button>`;
-  $("#main").innerHTML=`<div class="summary"><div class="left"><h2>${fc.bases.size===1?esc(baseLabel([...fc.bases][0])):"Coctelería"}</h2><span>${list.length} ${list.length===1?"cóctel":"cócteles"}</span></div></div>
-    ${list.length?groups.map(g=>{const items=list.filter(c=>baseKey(c.base)===g);return `<h3 class="bhead">${esc(baseLabel(items[0].base))}<small>${items.length}</small></h3><div class="grid">${items.map(card).join("")}</div>`;}).join("")+`<p class="credit">Fotos ilustrativas: Unsplash.</p>`:empty()}`;
+  $("#main").innerHTML=`<div class="summary"><div class="left"><h2>${fc.bases.size===1?esc(baseLabel([...fc.bases][0])):T("cocteleria")}</h2><span>${list.length} ${plural(list.length,"coctel","cocteles")}</span></div></div>
+    ${list.length?groups.map(g=>{const items=list.filter(c=>baseKey(c.base)===g);return `<h3 class="bhead">${esc(baseLabel(items[0].base))}<small>${items.length}</small></h3><div class="grid">${items.map(card).join("")}</div>`;}).join("")+`<p class="credit">${T("credito_fotos")}</p>`:empty()}`;
   bindList();
 }
 function openCocktail(id){
   const c=data.cocteles.find(x=>x.id===id); if(!c) return;
-  openOverlay(`${closeBtn}<div class="detail">${glass(c,true)}<div>
-    <span class="eyebrow" style="font-size:12px;color:var(--accent)">${esc(c.estilo)}</span>
+  openOverlay(`${closeBtn()}<div class="detail">${glass(c,true)}<div>
+    <span class="eyebrow" style="font-size:12px;color:var(--accent)">${esc(estiloLabel(c.estilo))}</span>
     <h2>${esc(c.nombre)}</h2>
-    ${c.descripcion?`<p style="color:var(--muted)">${esc(c.descripcion)}</p>`:""}
-    <dl class="kv">${c.base?`<dt>Destilado</dt><dd>${esc(baseLabel(c.base))}</dd>`:""}${c.sabor?`<dt>Sabor</dt><dd>${esc(c.sabor)}</dd>`:""}</dl>
-    ${c.ingredientes?`<h5>Ingredientes</h5><p>${esc(c.ingredientes)}</p>`:""}
+    ${L(c,"descripcion")?`<p style="color:var(--muted)">${esc(L(c,"descripcion"))}</p>`:""}
+    <dl class="kv">${c.base?`<dt>${T("f_destilado")}</dt><dd>${esc(baseLabel(c.base))}</dd>`:""}${c.sabor?`<dt>${T("f_sabor")}</dt><dd>${esc(saborLabel(c.sabor))}</dd>`:""}</dl>
+    ${L(c,"ingredientes")?`<h5>${T("d_ingredientes")}</h5><p>${esc(L(c,"ingredientes"))}</p>`:""}
     ${dishChips("cocteles",c.nombre)}
-    <div class="prices"><div><small>Precio</small>${money(c.precio)}</div></div>
+    <div class="prices"><div><small>${T("d_precio")}</small>${money(c.precio)}</div></div>
   </div></div>${backToDish()}`);
   bindDishChips();
 }
@@ -642,22 +802,22 @@ let currentDish=null;
 const byName=(arr,name)=>arr.find(x=>fotoKey(x.nombre)===fotoKey(name));
 function renderDishFilters(){
   const cats=[...new Set((data.platillos||[]).map(p=>p.categoria).filter(Boolean))].sort((a,b)=>{const ia=CAT_ORDEN.indexOf(norm(a)),ib=CAT_ORDEN.indexOf(norm(b));return (ia<0?99:ia)-(ib<0?99:ib);});
-  $("#filters").innerHTML=`<div class="fgroup"><h3>Categoría</h3><div class="chips">${cats.map(c=>`<button class="chip" data-k="${esc(c)}" data-g="cat" aria-pressed="${fd.cats.has(c)}">${esc(c)}</button>`).join("")}</div></div>
-    <div class="fgroup"><p style="margin:0;color:var(--muted);font-size:16px;max-width:24ch">Toca un platillo para ver qué vino y cóctel le va mejor.</p></div>
-    <div class="fgroup"><button class="linkbtn" id="fReset">Limpiar filtros</button></div>`;
+  $("#filters").innerHTML=`<div class="fgroup"><h3>${T("f_categoria")}</h3><div class="chips">${cats.map(c=>`<button class="chip" data-k="${esc(c)}" data-g="cat" aria-pressed="${fd.cats.has(c)}">${esc(catLabel(c))}</button>`).join("")}</div></div>
+    <div class="fgroup"><p style="margin:0;color:var(--muted);font-size:16px;max-width:24ch">${T("tip_platillo")}</p></div>
+    <div class="fgroup"><button class="linkbtn" id="fReset">${T("limpiar")}</button></div>`;
   chipsBind('[data-g="cat"]',fd.cats,renderDishes);
   $("#fReset").onclick=()=>{fd.cats.clear();resetAll();};
 }
 function renderDishes(){
   if(tab!=="platillos") return;
   const P=data.platillos||[];
-  if(!P.length){ $("#main").innerHTML=`<p class="notice">Aún no hay platillos. Agrega la hoja "Platillos" al Google Sheet.</p>`; return; }
-  const list=P.filter(p=>(!fd.cats.size||fd.cats.has(p.categoria))&&hasQ([p.nombre,p.categoria,p.descripcion]))
+  if(!P.length){ $("#main").innerHTML=`<p class="notice">${T("no_platillos")}</p>`; return; }
+  const list=P.filter(p=>(!fd.cats.size||fd.cats.has(p.categoria))&&hasQ([p.nombre,p.categoria,catLabel(p.categoria),p.descripcion,L(p,"descripcion")]))
     .sort((a,b)=>CAT_ORDEN.indexOf(norm(a.categoria))-CAT_ORDEN.indexOf(norm(b.categoria)));
   const cats=[...new Set(list.map(p=>p.categoria))];
-  $("#main").innerHTML=`<div class="summary"><div class="left"><h2>${fd.cats.size===1?esc([...fd.cats][0]):"Sugerencias del sommelier"}</h2><span>Elige tu platillo y te sugerimos vino y cóctel</span></div></div>
-   ${list.length?cats.map(c=>`<h3 style="font-family:var(--cond);font-weight:500;font-size:18px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:22px 0 12px">${esc(c)}</h3>
-   <div class="dlist">${list.filter(p=>p.categoria===c).map(p=>`<button class="drow" data-dish="${p.id}"><span>${esc(p.nombre)}</span><span class="go">Ver maridaje ›</span></button>`).join("")}</div>`).join(""):empty()}`;
+  $("#main").innerHTML=`<div class="summary"><div class="left"><h2>${fd.cats.size===1?esc(catLabel([...fd.cats][0])):T("sugerencias")}</h2><span>${T("sugerencias_sub")}</span></div></div>
+   ${list.length?cats.map(c=>`<h3 style="font-family:var(--cond);font-weight:500;font-size:18px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:22px 0 12px">${esc(catLabel(c))}</h3>
+   <div class="dlist">${list.filter(p=>p.categoria===c).map(p=>`<button class="drow" data-dish="${p.id}"><span>${esc(p.nombre)}</span><span class="go">${T("ver_maridaje")}</span></button>`).join("")}</div>`).join(""):empty()}`;
   $("#main").querySelectorAll("[data-dish]").forEach(b=>b.onclick=()=>openDish(b.dataset.dish));
   const er=$("#emptyReset"); if(er) er.onclick=()=>{fd.cats.clear();resetAll();};
 }
@@ -671,11 +831,11 @@ function openDish(id){
   currentDish=p.id;
   const ws=p.vinos.map(n=>byName(data.vinos,n)).filter(Boolean);
   const cs=p.cocteles.map(n=>byName(data.cocteles,n)).filter(Boolean);
-  openOverlay(`${closeBtn}
+  openOverlay(`${closeBtn()}
     ${p.foto?`<img class="dish-img" src="${esc(p.foto)}" alt="">`:""}
-    <div class="dish-head"><div><span class="eyebrow" style="font-size:13px;color:var(--accent)">${esc(p.categoria)} · Maridaje</span><h2>${esc(p.nombre)}</h2><p>${esc(p.descripcion)}</p></div></div>
-    ${ws.length?`<div class="pair-sec"><h5>Vinos que maridan</h5><div class="prow">${ws.map(w=>`<button class="pcard" data-w="${w.id}"><div class="b">${bottle(w.tipo,w.nombre,w.foto)}</div><div><b>${esc(w.nombre)}</b><span>${tipoOf(w.tipo).label} · ${esc(w.uva)}</span><div class="pr">${w.precioCopa?`Copa ${money(w.precioCopa)} · `:""}${money(w.precioBotella)}</div></div></button>`).join("")}</div></div>`:""}
-    ${cs.length?`<div class="pair-sec"><h5>Cócteles que maridan</h5><div class="prow">${cs.map(c=>`<button class="pcard" data-c="${c.id}"><div class="b">${cocktailImg(c)?`<img class="cphoto" src="${cocktailImg(c)}" alt="">`:glassSvg(c)}</div><div><b>${esc(c.nombre)}</b><span>${esc(c.ingredientes)}</span><div class="pr">${money(c.precio)}</div></div></button>`).join("")}</div></div>`:""}
+    <div class="dish-head"><div><span class="eyebrow" style="font-size:13px;color:var(--accent)">${esc(catLabel(p.categoria))} · ${T("maridaje")}</span><h2>${esc(p.nombre)}</h2><p>${esc(L(p,"descripcion"))}</p></div></div>
+    ${ws.length?`<div class="pair-sec"><h5>${T("vinos_maridan")}</h5><div class="prow">${ws.map(w=>`<button class="pcard" data-w="${w.id}"><div class="b">${bottle(w.tipo,w.nombre,w.foto)}</div><div><b>${esc(w.nombre)}</b><span>${tipoLabel(w.tipo)} · ${esc(w.uva)}</span><div class="pr">${w.precioCopa?`${T("d_copa")} ${money(w.precioCopa)} · `:""}${money(w.precioBotella)}</div></div></button>`).join("")}</div></div>`:""}
+    ${cs.length?`<div class="pair-sec"><h5>${T("cocteles_maridan")}</h5><div class="prow">${cs.map(c=>`<button class="pcard" data-c="${c.id}"><div class="b">${cocktailImg(c)?`<img class="cphoto" src="${cocktailImg(c)}" alt="">`:glassSvg(c)}</div><div><b>${esc(c.nombre)}</b><span>${esc(L(c,"ingredientes"))}</span><div class="pr">${money(c.precio)}</div></div></button>`).join("")}</div></div>`:""}
   `,"sheet");
   document.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>openWine(b.dataset.w));
   document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>openCocktail(b.dataset.c));
@@ -683,12 +843,12 @@ function openDish(id){
 function dishChips(field,name){
   const ds=(data.platillos||[]).filter(p=>p[field].some(n=>fotoKey(n)===fotoKey(name)));
   if(!ds.length) return "";
-  return `<h5>Marida con</h5><div class="dchips">${ds.map(d=>`<button class="dchip" data-dishchip="${d.id}">${esc(d.nombre)}</button>`).join("")}</div>`;
+  return `<h5>${T("d_marida")}</h5><div class="dchips">${ds.map(d=>`<button class="dchip" data-dishchip="${d.id}">${esc(d.nombre)}</button>`).join("")}</div>`;
 }
 function bindDishChips(){ document.querySelectorAll("[data-dishchip]").forEach(b=>b.onclick=()=>openDish(b.dataset.dishchip)); }
 function backToDish(){
   const p=currentDish&&(data.platillos||[]).find(x=>x.id===currentDish);
-  return p?`<button class="backdish" onclick="window.__openDish('${p.id}')">‹ Volver a ${esc(p.nombre)}</button>`:"";
+  return p?`<button class="backdish" onclick="window.__openDish('${p.id}')">${T("volver_a")} ${esc(p.nombre)}</button>`:"";
 }
 window.__openDish=id=>openDish(id);
 
@@ -722,9 +882,9 @@ function openPromos(){
   const next=()=>{ i++; if(i>=P.length){ closeOverlay(); } else paint(); };
   const paint=()=>{
     const p=P[i];
-    const body=p.imagen?`<img class="promo-img" src="${esc(p.imagen)}" alt="${esc(p.titulo||"Promoción")}">`
-      :`<div class="promo-txt"><span class="eyebrow">Promoción</span>${p.titulo?`<h2>${esc(p.titulo)}</h2>`:""}${p.descripcion?`<p>${esc(p.descripcion)}</p>`:""}${p.precio?`<div class="price">${esc(p.precio)}</div>`:""}</div>`;
-    openOverlay(`<button class="promo-x close" aria-label="Cerrar">✕</button>${body}<div class="promo-bar"><i></i></div>`,"promo-card");
+    const body=p.imagen?`<img class="promo-img" src="${esc(p.imagen)}" alt="${esc(L(p,"titulo")||T("promocion"))}">`
+      :`<div class="promo-txt"><span class="eyebrow">${T("promocion")}</span>${L(p,"titulo")?`<h2>${esc(L(p,"titulo"))}</h2>`:""}${L(p,"descripcion")?`<p>${esc(L(p,"descripcion"))}</p>`:""}${p.precio?`<div class="price">${esc(p.precio)}</div>`:""}</div>`;
+    openOverlay(`<button class="promo-x close" aria-label="${T("cerrar")}">✕</button>${body}<div class="promo-bar"><i></i></div>`,"promo-card");
     const card=$(".promo-card"); card.onclick=e=>{ if(!e.target.closest(".promo-x")) next(); };
     const bar=$(".promo-bar i"); requestAnimationFrame(()=>{ bar.style.transition=`width ${PROMO_MS}ms linear`; bar.style.width="100%"; });
     clearTimeout(promoTimer); promoTimer=setTimeout(next,PROMO_MS);
@@ -739,7 +899,7 @@ function openOverlay(html,cls="sheet"){
   const c=$("#overlay .close"); if(c) c.onclick=closeOverlay;
 }
 function closeOverlay(){ $("#overlay").innerHTML=""; clearInterval(promoTimer); clearTimeout(promoTimer); currentDish=null; }
-const closeBtn=`<button class="btn icon close" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
+const closeBtn=()=>`<button class="btn icon close" aria-label="${T("cerrar")}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg></button>`;
 
 /* ---------- Configuración (mantener presionado el logo 3 s) ---------- */
 function openSetup(){
@@ -771,10 +931,11 @@ $("#brand").addEventListener("contextmenu",e=>e.preventDefault());
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{ if(tab===t.dataset.tab) return; tab=t.dataset.tab; q=""; $("#q").value=""; $("#main").scrollTop=0; render(); });
 $("#q").addEventListener("input",e=>{q=e.target.value; tab==="vinos"?renderWines():tab==="cocteles"?renderCocktails():renderDishes();});
 $("#promoBtn").onclick=openPromos;
+document.querySelectorAll("[data-lang]").forEach(b=>b.onclick=()=>setLang(b.dataset.lang));
 
 /* Modo kiosco: tras 2 min sin uso vuelve al inicio y muestra la promoción al siguiente cliente */
 let idleT;
-function bump(){ clearTimeout(idleT); idleT=setTimeout(()=>{ if($("#sheetUrl")) return; closeOverlay(); tab="vinos"; view="cava"; mapState={level:"pais"}; resetAll(); $("#main").scrollTop=0; promoShownThisGuest=false; waitingGuest=true; },IDLE_MS); }
+function bump(){ clearTimeout(idleT); idleT=setTimeout(()=>{ if($("#sheetUrl")) return; closeOverlay(); tab="vinos"; view="cava"; mapState={level:"pais"}; if(lang!=="es"){lang="es";store.set("olivia_lang","es");applyStatic();} resetAll(); $("#main").scrollTop=0; promoShownThisGuest=false; waitingGuest=true; },IDLE_MS); }
 let waitingGuest=false;
 document.addEventListener("pointerdown",()=>{ if(waitingGuest){ waitingGuest=false; if(activePromos().length){ promoShownThisGuest=true; setTimeout(openPromos,50);} } },{capture:true});
 ["pointerdown","keydown","scroll"].forEach(ev=>document.addEventListener(ev,bump,{passive:true,capture:true}));
@@ -783,6 +944,7 @@ setInterval(()=>{ updatePromoBtn(); },60000);
 setInterval(()=>{ if(!$("#overlay").innerHTML) load(); },REFRESH_MS);
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&!$("#overlay").innerHTML) load(); });
 
+applyStatic(); if($("#loading")) $("#loading").textContent=T("cargando");
 load(); bump();
 if("serviceWorker" in navigator && location.protocol==="https:"){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
 /* Si no se abrió como app instalada, pantalla completa al primer toque */
