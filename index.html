@@ -389,7 +389,7 @@ let lang=(()=>{const v=store.get("olivia_lang");return LANGS.includes(v)?v:"es";
 const T=k=>(I18N[lang]&&I18N[lang][k])||I18N.es[k]||"";
 /* texto del Sheet: usa la columna <campo>_en / <campo>_it y si está vacía cae al español */
 /* 1º columna <campo>_en / <campo>_it de la misma fila · 2º hoja "Traducciones" · 3º español */
-const L=(o,f)=>{
+const LOC=(o,f)=>{
   if(!o) return "";
   if(lang!=="es"){
     const v=o[f+"_"+lang]; if(v&&String(v).trim()) return v;
@@ -658,7 +658,7 @@ function regionOf(w){
 function filteredWines(){
   return data.vinos.filter(w=>(!fv.tipos.size||fv.tipos.has(w.tipo))&&(!fv.pais||w.pais===fv.pais)
     &&(!fv.uva||w.uva.toLowerCase().includes(fv.uva.toLowerCase()))&&(!fv.copa||w.precioCopa)&&(fv.max==null||(w.precioBotella||0)<=fv.max)
-    &&hasQ([w.nombre,w.bodega,w.uva,w.pais,paisLabel(w.pais),w.region,w.notas,w.maridaje,L(w,"notas"),L(w,"maridaje")]))
+    &&hasQ([w.nombre,w.bodega,w.uva,w.pais,paisLabel(w.pais),w.region,w.notas,w.maridaje,LOC(w,"notas"),LOC(w,"maridaje")]))
     .sort((a,b)=>(b.destacado-a.destacado)||TIPOS.findIndex(t=>t.k===a.tipo)-TIPOS.findIndex(t=>t.k===b.tipo)||(a.precioBotella||0)-(b.precioBotella||0));
 }
 function viewsHtml(){
@@ -732,8 +732,8 @@ function openWine(id){
       <dt>${T("d_origen")}</dt><dd>${esc([w.region,paisLabel(w.pais)].filter(Boolean).join(", "))}</dd>
       ${cu?`<dt>${T("d_cuerpo")}</dt><dd><span class="body-scale" aria-label="${T("d_cuerpo")} ${cu}/5">${[1,2,3,4,5].map(i=>`<i class="${i<=cu?"on":""}"></i>`).join("")}</span></dd>`:""}
     </dl>
-    ${L(w,"notas")?`<h5>${T("d_notas")}</h5><p>${esc(L(w,"notas"))}</p>`:""}
-    ${dishChips("vinos",w.nombre)||(L(w,"maridaje")?`<h5>${T("d_marida")}</h5><p>${esc(L(w,"maridaje"))}</p>`:"")}
+    ${LOC(w,"notas")?`<h5>${T("d_notas")}</h5><p>${esc(LOC(w,"notas"))}</p>`:""}
+    ${dishChips("vinos",w.nombre)||(LOC(w,"maridaje")?`<h5>${T("d_marida")}</h5><p>${esc(LOC(w,"maridaje"))}</p>`:"")}
     <div class="prices">${w.precioCopa?`<div><small>${T("d_copa_oz")}</small>${money(w.precioCopa)}</div>`:""}<div><small>${T("d_botella_ml")}</small>${money(w.precioBotella)}</div></div>
   </div></div>${backToDish()}`);
   bindDishChips();
@@ -764,7 +764,7 @@ function renderCocktailFilters(){
 function renderCocktails(){
   if(tab!=="cocteles") return;
   const list=data.cocteles.filter(c=>(!fc.bases.size||fc.bases.has(baseKey(c.base)))&&(!fc.sabores.size||fc.sabores.has(c.sabor))
-    &&(fc.max==null||(c.precio||0)<=fc.max)&&hasQ([c.nombre,c.estilo,c.base,baseLabel(c.base),c.sabor,c.ingredientes,c.descripcion,L(c,"ingredientes"),L(c,"descripcion")]))
+    &&(fc.max==null||(c.precio||0)<=fc.max)&&hasQ([c.nombre,c.estilo,c.base,baseLabel(c.base),c.sabor,c.ingredientes,c.descripcion,LOC(c,"ingredientes"),LOC(c,"descripcion")]))
     .sort((a,b)=>baseRank(a.base)-baseRank(b.base)||(b.destacado-a.destacado)||(a.precio||0)-(b.precio||0));
   if(!data.cocteles.length){ $("#main").innerHTML=`<p class="notice">${T("no_cocteles")}</p>`; return; }
   const groups=[...new Set(list.map(c=>baseKey(c.base)))];
@@ -774,7 +774,7 @@ function renderCocktails(){
       <div class="meta">
         <span class="eyebrow">${esc(estiloLabel(c.estilo||""))}</span>
         <h4>${esc(c.nombre)}</h4>
-        <span class="origen" style="color:var(--muted)">${esc(L(c,"ingredientes"))}</span>
+        <span class="origen" style="color:var(--muted)">${esc(LOC(c,"ingredientes"))}</span>
         <div class="prices"><div><small>${T("d_precio")}</small>${money(c.precio)}</div></div>
       </div></button>`;
   $("#main").innerHTML=`<div class="summary"><div class="left"><h2>${fc.bases.size===1?esc(baseLabel([...fc.bases][0])):T("cocteleria")}</h2><span>${list.length} ${plural(list.length,"coctel","cocteles")}</span></div></div>
@@ -786,9 +786,9 @@ function openCocktail(id){
   openOverlay(`${closeBtn()}<div class="detail">${glass(c,true)}<div>
     <span class="eyebrow" style="font-size:12px;color:var(--accent)">${esc(estiloLabel(c.estilo))}</span>
     <h2>${esc(c.nombre)}</h2>
-    ${L(c,"descripcion")?`<p style="color:var(--muted)">${esc(L(c,"descripcion"))}</p>`:""}
+    ${LOC(c,"descripcion")?`<p style="color:var(--muted)">${esc(LOC(c,"descripcion"))}</p>`:""}
     <dl class="kv">${c.base?`<dt>${T("f_destilado")}</dt><dd>${esc(baseLabel(c.base))}</dd>`:""}${c.sabor?`<dt>${T("f_sabor")}</dt><dd>${esc(saborLabel(c.sabor))}</dd>`:""}</dl>
-    ${L(c,"ingredientes")?`<h5>${T("d_ingredientes")}</h5><p>${esc(L(c,"ingredientes"))}</p>`:""}
+    ${LOC(c,"ingredientes")?`<h5>${T("d_ingredientes")}</h5><p>${esc(LOC(c,"ingredientes"))}</p>`:""}
     ${dishChips("cocteles",c.nombre)}
     <div class="prices"><div><small>${T("d_precio")}</small>${money(c.precio)}</div></div>
   </div></div>${backToDish()}`);
@@ -812,7 +812,7 @@ function renderDishes(){
   if(tab!=="platillos") return;
   const P=data.platillos||[];
   if(!P.length){ $("#main").innerHTML=`<p class="notice">${T("no_platillos")}</p>`; return; }
-  const list=P.filter(p=>(!fd.cats.size||fd.cats.has(p.categoria))&&hasQ([p.nombre,p.categoria,catLabel(p.categoria),p.descripcion,L(p,"descripcion")]))
+  const list=P.filter(p=>(!fd.cats.size||fd.cats.has(p.categoria))&&hasQ([p.nombre,p.categoria,catLabel(p.categoria),p.descripcion,LOC(p,"descripcion")]))
     .sort((a,b)=>CAT_ORDEN.indexOf(norm(a.categoria))-CAT_ORDEN.indexOf(norm(b.categoria)));
   const cats=[...new Set(list.map(p=>p.categoria))];
   $("#main").innerHTML=`<div class="summary"><div class="left"><h2>${fd.cats.size===1?esc(catLabel([...fd.cats][0])):T("sugerencias")}</h2><span>${T("sugerencias_sub")}</span></div></div>
@@ -833,9 +833,9 @@ function openDish(id){
   const cs=p.cocteles.map(n=>byName(data.cocteles,n)).filter(Boolean);
   openOverlay(`${closeBtn()}
     ${p.foto?`<img class="dish-img" src="${esc(p.foto)}" alt="">`:""}
-    <div class="dish-head"><div><span class="eyebrow" style="font-size:13px;color:var(--accent)">${esc(catLabel(p.categoria))} · ${T("maridaje")}</span><h2>${esc(p.nombre)}</h2><p>${esc(L(p,"descripcion"))}</p></div></div>
+    <div class="dish-head"><div><span class="eyebrow" style="font-size:13px;color:var(--accent)">${esc(catLabel(p.categoria))} · ${T("maridaje")}</span><h2>${esc(p.nombre)}</h2><p>${esc(LOC(p,"descripcion"))}</p></div></div>
     ${ws.length?`<div class="pair-sec"><h5>${T("vinos_maridan")}</h5><div class="prow">${ws.map(w=>`<button class="pcard" data-w="${w.id}"><div class="b">${bottle(w.tipo,w.nombre,w.foto)}</div><div><b>${esc(w.nombre)}</b><span>${tipoLabel(w.tipo)} · ${esc(w.uva)}</span><div class="pr">${w.precioCopa?`${T("d_copa")} ${money(w.precioCopa)} · `:""}${money(w.precioBotella)}</div></div></button>`).join("")}</div></div>`:""}
-    ${cs.length?`<div class="pair-sec"><h5>${T("cocteles_maridan")}</h5><div class="prow">${cs.map(c=>`<button class="pcard" data-c="${c.id}"><div class="b">${cocktailImg(c)?`<img class="cphoto" src="${cocktailImg(c)}" alt="">`:glassSvg(c)}</div><div><b>${esc(c.nombre)}</b><span>${esc(L(c,"ingredientes"))}</span><div class="pr">${money(c.precio)}</div></div></button>`).join("")}</div></div>`:""}
+    ${cs.length?`<div class="pair-sec"><h5>${T("cocteles_maridan")}</h5><div class="prow">${cs.map(c=>`<button class="pcard" data-c="${c.id}"><div class="b">${cocktailImg(c)?`<img class="cphoto" src="${cocktailImg(c)}" alt="">`:glassSvg(c)}</div><div><b>${esc(c.nombre)}</b><span>${esc(LOC(c,"ingredientes"))}</span><div class="pr">${money(c.precio)}</div></div></button>`).join("")}</div></div>`:""}
   `,"sheet");
   document.querySelectorAll("[data-w]").forEach(b=>b.onclick=()=>openWine(b.dataset.w));
   document.querySelectorAll("[data-c]").forEach(b=>b.onclick=()=>openCocktail(b.dataset.c));
@@ -882,8 +882,8 @@ function openPromos(){
   const next=()=>{ i++; if(i>=P.length){ closeOverlay(); } else paint(); };
   const paint=()=>{
     const p=P[i];
-    const body=p.imagen?`<img class="promo-img" src="${esc(p.imagen)}" alt="${esc(L(p,"titulo")||T("promocion"))}">`
-      :`<div class="promo-txt"><span class="eyebrow">${T("promocion")}</span>${L(p,"titulo")?`<h2>${esc(L(p,"titulo"))}</h2>`:""}${L(p,"descripcion")?`<p>${esc(L(p,"descripcion"))}</p>`:""}${p.precio?`<div class="price">${esc(p.precio)}</div>`:""}</div>`;
+    const body=p.imagen?`<img class="promo-img" src="${esc(p.imagen)}" alt="${esc(LOC(p,"titulo")||T("promocion"))}">`
+      :`<div class="promo-txt"><span class="eyebrow">${T("promocion")}</span>${LOC(p,"titulo")?`<h2>${esc(LOC(p,"titulo"))}</h2>`:""}${LOC(p,"descripcion")?`<p>${esc(LOC(p,"descripcion"))}</p>`:""}${p.precio?`<div class="price">${esc(p.precio)}</div>`:""}</div>`;
     openOverlay(`<button class="promo-x close" aria-label="${T("cerrar")}">✕</button>${body}<div class="promo-bar"><i></i></div>`,"promo-card");
     const card=$(".promo-card"); card.onclick=e=>{ if(!e.target.closest(".promo-x")) next(); };
     const bar=$(".promo-bar i"); requestAnimationFrame(()=>{ bar.style.transition=`width ${PROMO_MS}ms linear`; bar.style.width="100%"; });
