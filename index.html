@@ -157,9 +157,9 @@ main.list{overflow:auto;padding-block:20px 60px;padding-bottom:calc(60px + env(s
 .rack{position:relative;display:flex;gap:30px;overflow-x:auto;padding:14px 30px 0;scroll-snap-type:x proximity;scrollbar-width:none}
 .rack::-webkit-scrollbar{display:none}
 .slot{flex:none;width:124px;display:flex;flex-direction:column;align-items:center;background:none;border:0;padding:0;scroll-snap-align:start;color:#f3eadb}
-.slot .b{height:290px;display:flex;align-items:flex-end;justify-content:center;background:radial-gradient(ellipse 60% 55% at 50% 62%,rgba(255,250,230,.16),transparent 70%)}
+.slot .b{height:var(--slot-b,290px);display:flex;align-items:flex-end;justify-content:center;background:radial-gradient(ellipse 60% 55% at 50% 62%,rgba(255,250,230,.16),transparent 70%)}
 .slot .b img,.mcard .b img{mix-blend-mode:normal!important}
-.slot .b img,.slot .b svg{height:var(--bh,280px);width:auto;max-width:120px;object-fit:contain;filter:drop-shadow(0 5px 4px rgba(0,0,0,.35));transition:transform .18s,filter .18s;transform-origin:50% 100%}
+.slot .b img,.slot .b svg{height:var(--bh,var(--bh-base,280px));width:auto;max-width:120px;object-fit:contain;filter:drop-shadow(0 5px 4px rgba(0,0,0,.35));transition:transform .18s,filter .18s;transform-origin:50% 100%}
 .slot:hover .b img,.slot:hover .b svg,.slot:focus-visible .b img,.slot:focus-visible .b svg{transform:translateY(-10px) scale(1.07);filter:drop-shadow(0 12px 10px rgba(0,0,0,.45))}
 .slot:active .b img,.slot:active .b svg{transform:translateY(-10px) scale(1.07);filter:drop-shadow(0 12px 10px rgba(0,0,0,.45))}
 .slot:hover .n,.slot:active .n{color:#fff}
@@ -171,7 +171,7 @@ main.list{overflow:auto;padding-block:20px 60px;padding-bottom:calc(60px + env(s
 .slot .p{margin-top:14px;font-family:var(--mono);font-size:19px;color:#fff}
 .slot .n{font-family:var(--cond);font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:#e9ecdc;text-align:center;line-height:1.15;margin-top:2px;max-width:124px}
 .rackwrap{position:relative}
-.rackwrap .plank{position:absolute;left:0;right:0;top:302px}
+.rackwrap .plank{position:absolute;left:0;right:0;top:var(--plank-top,302px)}
 #map{height:calc(100vh - 250px);min-height:420px;border-radius:22px;overflow:hidden;background:#1d2a33}
 .mapbar{position:absolute;z-index:500;top:14px;left:14px;display:flex;gap:8px}
 .mapbar button{height:46px;padding:0 18px;border-radius:999px;border:0;background:rgba(20,22,18,.78);color:#fff;font-family:var(--cond);letter-spacing:.06em;text-transform:uppercase;font-size:16px}
@@ -242,6 +242,53 @@ main.list{overflow:auto;padding-block:20px 60px;padding-bottom:calc(60px + env(s
   padding:6px 10px;border-radius:999px;cursor:pointer;line-height:1;transition:background .15s,color .15s}
 .langs button[aria-pressed="true"]{background:var(--accent);color:#fff}
 @media (max-width:820px){.langs button{padding:5px 7px;font-size:12px}}
+
+/* ====== Optimización para tablets ====== */
+:root{--bh-base:280px;--slot-b:290px;--plank-top:302px}
+
+/* Pantallas de poca altura: tablet horizontal (800 px) e iPad horizontal (768 px).
+   Encoge el estante para que se vean dos repisas sin hacer scroll. */
+@media (max-height:900px){
+  :root{--bh-base:206px;--slot-b:216px;--plank-top:228px}
+  .slot{width:112px}
+  .slot .b img,.slot .b svg{max-width:106px}
+  .slot .p{margin-top:17px;font-size:17px}
+  .slot .n{font-size:14px;max-width:112px}
+  .rack{gap:24px;padding-top:10px}
+  .shelf{margin-bottom:18px}
+  .summary h2{font-size:34px}
+  .summary{margin-bottom:12px}
+  main.list{padding-block:14px 40px}
+  aside.filters{padding-block:14px 24px;gap:16px}
+}
+
+/* Cabecera compacta en tablet: todo en una sola fila, sin banda vacía */
+@media (min-width:821px) and (max-width:1400px){
+  header.top{gap:10px 14px;padding:10px 16px;flex-wrap:nowrap}
+  .brand img{width:60px;height:60px}
+  .tab{height:46px;padding:0 18px;font-size:17px}
+  .search{flex:0 1 230px;max-width:250px;height:46px}
+  .btn.promo{height:46px;padding:0 14px;font-size:15px}
+  .langs button{padding:5px 8px}
+  .views button{height:40px;padding:0 14px;font-size:15px}
+  .body{grid-template-columns:232px 1fr;gap:20px;padding-inline:16px}
+}
+
+/* Tablet vertical (700–820 px): cabecera compacta, y recuperamos
+   los filtros de uva y de precio que se ocultan en el móvil */
+@media (min-width:700px) and (max-width:820px){
+  .hide-sm{display:block}
+  aside.filters{padding-right:22px}
+  .fgroup.range{min-width:200px}
+  header.top{gap:8px 12px;padding:8px 14px}
+  .brand img{width:52px;height:52px}
+  .tab{height:42px;padding:0 14px;font-size:15px}
+  .search{height:42px;flex:1 1 160px;max-width:none}
+  .btn.promo{height:42px;padding:0 12px;font-size:14px}
+  .langs button{padding:5px 7px;font-size:12px}
+  aside.filters{padding-block:12px 2px}
+  main.list{padding-block:12px 40px}
+}
 </style>
 </head>
 <body>
@@ -606,7 +653,7 @@ function renderWines(){
   if(view==="cava"){
     $("#main").innerHTML=head+renderCava(list);
     $("#main").querySelectorAll(".slot").forEach(c=>c.onclick=()=>openWine(c.dataset.id));
-    $("#main").querySelectorAll(".slot .b img").forEach(img=>{const fit=()=>{const r=img.naturalHeight/img.naturalWidth; if(r>3.95) img.style.setProperty("--bh",Math.round(280*Math.min(1.14,r/3.9))+"px");}; img.complete?fit():img.addEventListener("load",fit,{once:true});});
+    $("#main").querySelectorAll(".slot .b img").forEach(img=>{const fit=()=>{const r=img.naturalHeight/img.naturalWidth; if(r>3.95) img.style.setProperty("--bh",Math.round(BHBASE()*Math.min(1.14,r/3.9))+"px");}; img.complete?fit():img.addEventListener("load",fit,{once:true});});
   } else if(view==="mapa"){
     $("#main").innerHTML=head+`<div class="mapwrap"><div id="map"></div>${mapState.level==="region"?`<div class="mapbar"><button id="mapBack">${T("map_todos")}</button></div>`:""}</div>`;
     const b=$("#mapBack"); if(b) b.onclick=()=>{ mapState={level:"pais"}; renderWines(); };
@@ -672,6 +719,7 @@ function viewsHtml(){
 function bindViews(){
   document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{ view=b.dataset.view; store.set("olivia_view",view); mapState={level:"pais"}; renderWines(); $("#main").scrollTop=0; });
 }
+const BHBASE=()=>parseInt(getComputedStyle(document.documentElement).getPropertyValue("--bh-base"))||280;
 function renderCava(list){
   const groups=TIPOS.map(t=>({t,items:list.filter(w=>w.tipo===t.k)})).filter(g=>g.items.length);
   return `<div class="cava">${groups.map(g=>`<section class="shelf">
